@@ -18,7 +18,9 @@ dir_reader = SimpleDirectoryReader(
 )
 documents = dir_reader.load_data()
 
-
+# documents -> vectara-cli
+# prompt generator ? 
+# vectara-cli -> togetherai
         # set api key in env or in llm
         # import os
         # os.environ["TOGETHER_API_KEY"] = "your api key"
