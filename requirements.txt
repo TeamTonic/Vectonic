@@ -1,0 +1,7 @@
+vectara-cli
+vectara-cli[span_marker]
+llama-index-core
+llama-index-readers-file
+llama-index-llms-together
+python-magic-bin==0.4.14
+gradio
