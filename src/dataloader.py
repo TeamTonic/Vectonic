@@ -141,12 +141,6 @@ class DocumentLoader:
                 reader = DataProcessor(
                     source_file=full_path,
                 )
-                
-                
-                
-                
-                
-                # reader = DataProcessor.choose_reader(full_path)
 
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
