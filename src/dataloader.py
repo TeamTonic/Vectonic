@@ -81,8 +81,6 @@ class DataProcessor:
             reader = RTFReader()
         elif ext == '.xml':
             reader = XMLReader()
-        elif self.source_file.startswith('http'):
-            reader = AsyncWebPageReader()  # Simplified assumption for URLs
         else:
             raise ValueError(f"Unsupported source type: {self.source_file}")
 
