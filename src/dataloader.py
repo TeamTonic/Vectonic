@@ -26,14 +26,13 @@ from llama_index.readers.file import ImageVisionLLMReader # https://github.com/r
 # from llama_index.readers.file import SimpleDirectoryReader
 # from llama_index.core.node_parser import SentenceSplitter
 
-from llama_index.readers.web import AsyncWebPageReader
 import llama_parse
 from llama_parse import LlamaParse
 
-from langchain_core.documents.base import Document
+# from langchain_community_core.documents.base import Document
+
 import os
 
-import chromadb
 
 class DataProcessor:
     def __init__(self, source_file: str, collection_name: str, persist_directory: str):
@@ -146,7 +145,8 @@ class DataProcessor:
 class DocumentLoader:
 
     @staticmethod
-    def load_documents_from_folder(folder_path: str) -> list[Document]:
+    # def load_documents_from_folder(folder_path: str) -> list[Document]:
+    def load_documents_from_folder(folder_path: str):
         """Loads documents from files within a specified folder"""
         folder_path = "./add_your_files_here"
         documents = []
