@@ -59,7 +59,7 @@ class DataProcessor:
             reader = PandasCSVReader(self.source_file, return_full_document=True)
         elif ext == '.docx':
             reader = DocxReader(self.source_file, return_full_document=True)
-        elif ext =(self.source_file, return_full_document=True)= '.epub':
+        elif ext == '.epub':
             reader = EpubReader(self.source_file, return_full_document=True)
         elif ext == '.html':
             reader = HTMLTagReader(self.source_file, return_full_document=True)
