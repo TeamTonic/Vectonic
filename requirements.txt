@@ -24,5 +24,6 @@ llama-index-readers-file-rtf
 llama-index-readers-file
 llama-index-readers-file
 llama-parse
-python-magic-bin==0.4.14
+# python-magic-bin==0.4.14
 gradio
+unstructured
