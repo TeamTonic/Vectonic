@@ -26,13 +26,14 @@ from llama_index.readers.file import ImageVisionLLMReader # https://github.com/r
 # from llama_index.readers.file import SimpleDirectoryReader
 # from llama_index.core.node_parser import SentenceSplitter
 
+from llama_index.readers.web import AsyncWebPageReader
 import llama_parse
 from llama_parse import LlamaParse
 
-# from langchain_community_core.documents.base import Document
-
+from langchain_core.documents.base import Document
 import os
 
+import chromadb
 
 class DataProcessor:
     def __init__(self, source_file: str, collection_name: str, persist_directory: str):
@@ -81,8 +82,25 @@ class DataProcessor:
             reader = RTFReader()
         elif ext == '.xml':
             reader = XMLReader()
+        elif self.source_file.startswith('http'):
+            reader = AsyncWebPageReader()  # Simplified assumption for URLs
         else:
             raise ValueError(f"Unsupported source type: {self.source_file}")
+
+        # Use the reader to load data
+        # data = reader.read(self.source_file)
+        # data = reader.load_data(self.source_file)  
+        # chroma_client = chromadb.Client()
+        # collection = chroma_client.create_collection(name=self.collection_name)
+        # collection.add(
+        #         documents=[i.text for i in data], # the text fields
+        #         metadatas=[i.extra_info for i in data], # the metadata
+        #         ids=[i.doc_id for i in data], # the generated ids
+        # )
+        # retriever_model = ChromadbRM(collection_name, persist_directory)
+        # retriever_model(data)
+
+        # return data
 
     def choose_reader(file_path: str) -> Optional[object]:
         """Selects the appropriate reader for a given file based on its extension."""
@@ -128,8 +146,7 @@ class DataProcessor:
 class DocumentLoader:
 
     @staticmethod
-    # def load_documents_from_folder(folder_path: str) -> list[Document]:
-    def load_documents_from_folder(folder_path: str):
+    def load_documents_from_folder(folder_path: str) -> list[Document]:
         """Loads documents from files within a specified folder"""
         folder_path = "./add_your_files_here"
         documents = []
@@ -148,4 +165,8 @@ class DocumentLoader:
                         
                     except Exception as e:
                         print(f"Failed to load document from '{filename}'. Error: {e}")
-        return documents
+        # # Convert to langchain format
+        # documents = [ doc.to_langchain_format()
+        # for doc in documents
+        # ]                       
+        # return documents

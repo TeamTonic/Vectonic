@@ -3,6 +3,26 @@ vectara-cli[span_marker]
 llama-index-core
 llama-index-readers-file
 llama-index-llms-together
+llama-index-readers-file-docs
+llama-index-readers-file-epub
+llama-index-readers-file-flat
+llama-index-readers-file-html
+llama-index-readers-file-image
+llama-index-readers-file-image-caption
+llama-index-readers-file-image-deplot
+llama-index-readers-file-image-vision-llm
+llama-index-readers-file-ipynb
+llama-index-readers-file-markdown
+llama-index-readers-file-mbo
+llama-index-readers-file-paged_csv
+llama-index-readers-file-pymu_pdf
+llama-index-readers-file-slides
+llama-index-readers-file-tabular
+llama-index-readers-file-unstructured
+llama-index-readers-file-xml
+llama-index-readers-file-rtf
+llama-index-readers-file
+llama-index-readers-file
 llama-parse
 # python-magic-bin==0.4.14
 gradio
