@@ -56,35 +56,35 @@ class DataProcessor:
 
         # Load data using appropriate reader
         if ext == '.csv':
-            reader = PandasCSVReader()
+            reader = PandasCSVReader(self.source_file, return_full_document=True)
         elif ext == '.docx':
-            reader = DocxReader()
-        elif ext == '.epub':
-            reader = EpubReader()
+            reader = DocxReader(self.source_file, return_full_document=True)
+        elif ext =(self.source_file, return_full_document=True)= '.epub':
+            reader = EpubReader(self.source_file, return_full_document=True)
         elif ext == '.html':
-            reader = HTMLTagReader()
+            reader = HTMLTagReader(self.source_file, return_full_document=True)
         elif ext == '.hwp':
-            reader = HWPReader()
+            reader = HWPReader(self.source_file, return_full_document=True)
         elif ext == '.ipynb':
-            reader = IPYNBReader()
+            reader = IPYNBReader(self.source_file, return_full_document=True)
         elif ext in ['.png', '.jpg', '.jpeg']:
-            reader = ImageReader()  # Assuming ImageReader can handle common image formats
+            reader = ImageReader(self.source_file, return_full_document=True)  # Assuming ImageReader can handle common image formats
         elif ext == '.md':
-            reader = MarkdownReader()
+            reader = MarkdownReader(self.source_file, return_full_document=True)
         elif ext == '.mbox':
-            reader = MboxReader()
+            reader = MboxReader(self.source_file, return_full_document=True)
         elif ext == '.pdf':
-            reader = PDFReader()
+            reader = PDFReader(self.source_file, return_full_document=True)
         elif ext == '.pptx':
-            reader = PptxReader()
+            reader = PptxReader(self.source_file, return_full_document=True)
         elif ext == '.rtf':
-            reader = RTFReader()
+            reader = RTFReader(self.source_file, return_full_document=True)
         elif ext == '.xml':
-            reader = XMLReader()
+            reader = XMLReader(self.source_file, return_full_document=True)
         else:
             raise ValueError(f"Unsupported source type: {self.source_file}")
 
-    def choose_reader(file_path: str) -> Optional[object]:
+    def choose_reader(self, file_path: str) -> Optional[object]:
         """Selects the appropriate reader for a given file based on its extension."""
         _, file_extension = os.path.splitext(file_path)
         file_extension = file_extension.lower()
@@ -113,9 +113,9 @@ class DataProcessor:
             # are specific cases that would be handled elsewhere, hence using CSVReader as default
         }
         image_readers = {
-            '.jpg': ImageCaptionReader,  # or ImageTabularChartReader, ImageVisionLLMReader based on content
-            '.jpeg': ImageCaptionReader,
-            '.png': ImageTabularChartReader,
+            '.jpg': ImageCaptionReader(self.source_file, return_full_document=True),  # or ImageTabularChartReader, ImageVisionLLMReader based on content
+            '.jpeg': ImageCaptionReader(self.source_file, return_full_document=True),
+            '.png': ImageTabularChartReader(self.source_file, return_full_document=True),
         }
         
         # If the file is an image and has a specialized reader, use that.
