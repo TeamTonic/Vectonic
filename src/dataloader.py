@@ -35,10 +35,11 @@ import os
 
 
 class DataProcessor:
-    def __init__(self, source_file: str, collection_name: str, persist_directory: str):
+    def __init__(self, 
+        source_file: str, 
+        ):
+        
         self.source_file = source_file
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
 
     def load_data_from_source_and_store(self) -> Any:
     # def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
@@ -137,14 +138,24 @@ class DocumentLoader:
             for filename in filenames:
                 full_path = os.path.join(root, filename)
                 
-                reader = DataProcessor.choose_reader(full_path)
+                reader = DataProcessor(
+                    source_file=full_path,
+                )
+                
+                
+                
+                
+                
+                # reader = DataProcessor.choose_reader(full_path)
 
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
                     
                     try:
-                        docs = list(reader.load_data(input_files=[full_path]))
-                        documents.extend(docs)
+                        # docs = list(reader.load_data(input_files=[full_path]))
+                        docs = reader.load_data_from_source_and_store()
+                        current_document = docs.load_data(reader.source_file)
+                        documents.extend(current_document)
                         
                     except Exception as e:
                         print(f"Failed to load document from '{filename}'. Error: {e}")
