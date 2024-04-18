@@ -129,7 +129,7 @@ class DocumentLoader:
 
     @staticmethod
     # def load_documents_from_folder(folder_path: str) -> list[Document]:
-    def load_documents_from_folder(folder_path: str):
+    def load_documents_from_folder(folder_path:str="./add_your_files_here"):
         """Loads documents from files within a specified folder"""
         folder_path = "./add_your_files_here"
         documents = []
