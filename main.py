@@ -17,29 +17,39 @@ nest_asyncio.apply()
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 
-parser = LlamaParse(
-    api_key="llx-...",  # can also be set in your env as LLAMA_CLOUD_API_KEY
-    result_type="markdown",  # "markdown" and "text" are available
-    verbose=True,
-) # can be replaced by Unstructured!!
+import os
+from src.dataloader import DataProcessor, DocumentLoader
 
-# plaintext = parser(DocumentLoader("./add_your_files_here"))
-# vectara_client = VectaraClient(api keys)
-# Add Process and Upload Logic Here
-# chunks = UnstructuredReader.chunk_text(plaintext)
-# for chunk in chunks :
-# spantext , entities = Span().analyse_text
-# prepend spantext to chunk , Span().convert_entities_to_metadata
-# VectaraClient().upload_document(corpus_id, enhanced chunk, metadata)
+class DataLoading:
+    def __init__(self, folder_path: str):
+        self.folder_path = folder_path
 
-## Query
-# VectaraClient().query
+    def process_files(self):
+        """
+        Method to process each file in the specified directory.
+        """
+        # Validate if the folder exists
+        if not os.path.exists(self.folder_path):
+            print(f"Error: The folder {self.folder_path} does not exist.")
+            return
 
-## FormatPrompt("# Context {Context} \n \n # Query {query} \n\n you are a helpful assistant , answer the question based on the above.")
+        print(f"Processing files in folder: {self.folder_path}")
+        for root, dirs, files in os.walk(self.folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                try:
+                    # Use DataProcessor's static method to determine appropriate reader
+                    reader = DataProcessor.choose_reader(file_path)
+                    if reader:
+                        print(f"Processing file: {file} with {type(reader).__name__}")
+                        documents = reader.load_data(file_path)  # This assumes a `load_data` method in each reader
+                        print(f"Loaded documents from '{file}': {documents}")
+                    else:
+                        print(f"No appropriate reader found for {file}. Skipping.")
+                except Exception as e:
+                    print(f"Error processing {file}: {str(e)}")
 
-## Todo : Model Mapper for Model Selection
-llm = TogetherLLM(
-    model="mistralai/Mixtral-8x7B-Instruct-v0.1", api_key="your_api_key"
-)
-resp = llm.complete("Who is Paul Graham?")
-    print(resp)
+if __name__ == "__main__":
+    # Instance of DataLoading, pointing to the desired directory
+    data_loader = DataLoading(folder_path='./add_your_files_here')
+    data_loader.process_files()

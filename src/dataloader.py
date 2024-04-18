@@ -84,21 +84,6 @@ class DataProcessor:
         else:
             raise ValueError(f"Unsupported source type: {self.source_file}")
 
-        # Use the reader to load data
-        # data = reader.read(self.source_file)
-        # data = reader.load_data(self.source_file)  
-        # chroma_client = chromadb.Client()
-        # collection = chroma_client.create_collection(name=self.collection_name)
-        # collection.add(
-        #         documents=[i.text for i in data], # the text fields
-        #         metadatas=[i.extra_info for i in data], # the metadata
-        #         ids=[i.doc_id for i in data], # the generated ids
-        # )
-        # retriever_model = ChromadbRM(collection_name, persist_directory)
-        # retriever_model(data)
-
-        # return data
-
     def choose_reader(file_path: str) -> Optional[object]:
         """Selects the appropriate reader for a given file based on its extension."""
         _, file_extension = os.path.splitext(file_path)
@@ -163,8 +148,4 @@ class DocumentLoader:
                         
                     except Exception as e:
                         print(f"Failed to load document from '{filename}'. Error: {e}")
-        # # Convert to langchain format
-        # documents = [ doc.to_langchain_format()
-        # for doc in documents
-        # ]                       
-        # return documents
+        return documents
