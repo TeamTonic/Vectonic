@@ -56,31 +56,31 @@ class DataProcessor:
 
         # Load data using appropriate reader
         if ext == '.csv':
-            reader = PandasCSVReader(self.source_file, return_full_document=True)
+            reader = PandasCSVReader(return_full_document=True)
         elif ext == '.docx':
-            reader = DocxReader(self.source_file, return_full_document=True)
+            reader = DocxReader(return_full_document=True)
         elif ext == '.epub':
-            reader = EpubReader(self.source_file, return_full_document=True)
+            reader = EpubReader(return_full_document=True)
         elif ext == '.html':
-            reader = HTMLTagReader(self.source_file, return_full_document=True)
+            reader = HTMLTagReader(return_full_document=True)
         elif ext == '.hwp':
-            reader = HWPReader(self.source_file, return_full_document=True)
+            reader = HWPReader(return_full_document=True)
         elif ext == '.ipynb':
-            reader = IPYNBReader(self.source_file, return_full_document=True)
+            reader = IPYNBReader(return_full_document=True)
         elif ext in ['.png', '.jpg', '.jpeg']:
-            reader = ImageReader(self.source_file, return_full_document=True)  # Assuming ImageReader can handle common image formats
+            reader = ImageReader(return_full_document=True)  # Assuming ImageReader can handle common image formats
         elif ext == '.md':
-            reader = MarkdownReader(self.source_file, return_full_document=True)
+            reader = MarkdownReader(return_full_document=True)
         elif ext == '.mbox':
-            reader = MboxReader(self.source_file, return_full_document=True)
+            reader = MboxReader(return_full_document=True)
         elif ext == '.pdf':
-            reader = PDFReader(self.source_file, return_full_document=True)
+            reader = PDFReader(return_full_document=True)
         elif ext == '.pptx':
-            reader = PptxReader(self.source_file, return_full_document=True)
+            reader = PptxReader(return_full_document=True)
         elif ext == '.rtf':
-            reader = RTFReader(self.source_file, return_full_document=True)
+            reader = RTFReader(return_full_document=True)
         elif ext == '.xml':
-            reader = XMLReader(self.source_file, return_full_document=True)
+            reader = XMLReader(return_full_document=True)
         else:
             raise ValueError(f"Unsupported source type: {self.source_file}")
 
