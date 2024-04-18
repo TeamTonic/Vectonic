@@ -38,7 +38,6 @@ class DataLoading:
             for file in files:
                 file_path = os.path.join(root, file)
                 try:
-                    # Use DataProcessor's static method to determine appropriate reader
                     reader = DataProcessor.choose_reader(file_path)
                     if reader:
                         print(f"Processing file: {file} with {type(reader).__name__}")
