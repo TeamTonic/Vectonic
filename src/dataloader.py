@@ -35,10 +35,11 @@ import os
 
 
 class DataProcessor:
-    def __init__(self, source_file: str, collection_name: str, persist_directory: str):
+    def __init__(self, 
+        source_file: str, 
+        ):
+        
         self.source_file = source_file
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
 
     def load_data_from_source_and_store(self) -> Any:
     # def load_data_from_source_and_store(source: Union[str, dict], collection_name: str, persist_directory: str) -> Any:
@@ -55,34 +56,40 @@ class DataProcessor:
             raise TypeError("Source must be a string (file path or URL).")
 
         # Load data using appropriate reader
-        if ext == '.csv':
-            reader = PandasCSVReader(self.source_file, return_full_document=True)
-        elif ext == '.docx':
-            reader = DocxReader(self.source_file, return_full_document=True)
-        elif ext == '.epub':
-            reader = EpubReader(self.source_file, return_full_document=True)
-        elif ext == '.html':
-            reader = HTMLTagReader(self.source_file, return_full_document=True)
-        elif ext == '.hwp':
-            reader = HWPReader(self.source_file, return_full_document=True)
-        elif ext == '.ipynb':
-            reader = IPYNBReader(self.source_file, return_full_document=True)
-        elif ext in ['.png', '.jpg', '.jpeg']:
-            reader = ImageReader(self.source_file, return_full_document=True)  # Assuming ImageReader can handle common image formats
-        elif ext == '.md':
-            reader = MarkdownReader(self.source_file, return_full_document=True)
-        elif ext == '.mbox':
-            reader = MboxReader(self.source_file, return_full_document=True)
-        elif ext == '.pdf':
-            reader = PDFReader(self.source_file, return_full_document=True)
-        elif ext == '.pptx':
-            reader = PptxReader(self.source_file, return_full_document=True)
-        elif ext == '.rtf':
-            reader = RTFReader(self.source_file, return_full_document=True)
-        elif ext == '.xml':
-            reader = XMLReader(self.source_file, return_full_document=True)
-        else:
-            raise ValueError(f"Unsupported source type: {self.source_file}")
+        try:
+            if ext == '.csv':
+                reader = PandasCSVReader(self.source_file, return_full_document=True)
+            elif ext == '.docx':
+                reader = DocxReader(self.source_file, return_full_document=True)
+            elif ext == '.epub':
+                reader = EpubReader(self.source_file, return_full_document=True)
+            elif ext == '.html':
+                reader = HTMLTagReader(self.source_file, return_full_document=True)
+            elif ext == '.hwp':
+                reader = HWPReader(self.source_file, return_full_document=True)
+            elif ext == '.ipynb':
+                reader = IPYNBReader(self.source_file, return_full_document=True)
+            elif ext in ['.png', '.jpg', '.jpeg']:
+                reader = ImageReader(self.source_file, return_full_document=True)  # Assuming ImageReader can handle common image formats
+            elif ext == '.md':
+                reader = MarkdownReader(self.source_file, return_full_document=True)
+            elif ext == '.mbox':
+                reader = MboxReader(self.source_file, return_full_document=True)
+            elif ext == '.pdf':
+                # reader = PDFReader(self.source_file, return_full_document=True)
+                reader = PDFReader( return_full_document=True)
+            elif ext == '.pptx':
+                reader = PptxReader(self.source_file, return_full_document=True)
+            elif ext == '.rtf':
+                reader = RTFReader(self.source_file, return_full_document=True)
+            elif ext == '.xml':
+                reader = XMLReader(self.source_file, return_full_document=True)
+            else:
+                raise ValueError(f"Unsupported source type: {self.source_file}")
+            
+            return reader
+        except ValueError:
+            print(f"Unsupported source type: {self.source_file}")
 
     def choose_reader(self, file_path: str) -> Optional[object]:
         """Selects the appropriate reader for a given file based on its extension."""
@@ -137,14 +144,24 @@ class DocumentLoader:
             for filename in filenames:
                 full_path = os.path.join(root, filename)
                 
-                reader = DataProcessor.choose_reader(full_path)
+                reader = DataProcessor(
+                    source_file=full_path,
+                )
+                
+                
+                
+                
+                
+                # reader = DataProcessor.choose_reader(full_path)
 
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
                     
                     try:
-                        docs = list(reader.load_data(input_files=[full_path]))
-                        documents.extend(docs)
+                        # docs = list(reader.load_data(input_files=[full_path]))
+                        docs = reader.load_data_from_source_and_store()
+                        current_document = docs.load_data(reader.source_file)
+                        documents.extend(current_document)
                         
                     except Exception as e:
                         print(f"Failed to load document from '{filename}'. Error: {e}")
