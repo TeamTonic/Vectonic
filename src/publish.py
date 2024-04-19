@@ -74,18 +74,17 @@ class VectonicPublisher:
             for file in files:
                 file_path = os.path.join(root, file)
                 path_in_repo = os.path.relpath(file_path, start=deployment_path)
-                hf_client = HfApi(
-                    endpoint=data
-                )
-            #     data = hf_client.create_repo(
-            #         end
-            #         repo_id=f"Vectonic{title}".replace(" ", ""),
-            #         repo_type="space",
-            #         exist_ok=True,
-            #         private=False,
-            #         space_sdk="gradio",
-            #         token=self.hf_token,
-            # )
+                # hf_client = HfApi(
+                #     endpoint=data
+                # )
+                data = hf_client.create_repo(
+                    repo_id=f"Vectonic{title}".replace(" ", ""),
+                    repo_type="space",
+                    exist_ok=True,
+                    private=False,
+                    space_sdk="gradio",
+                    token=self.hf_token,
+            )
                 hf_client.upload_file(
                     repo_id=repo_id,
                     path_or_fileobj=file_path,
