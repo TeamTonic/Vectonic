@@ -8,3 +8,4 @@ llama-parse
 gradio
 unstructured
 markdown
+tonic-validate
