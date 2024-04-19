@@ -51,7 +51,7 @@ def chatbot_response(user_query):
     together_ai = TogetherAIInterface(TOGETHER_API_TOKEN)
     
     # Retrieve context from Vectara based on the user's query
-    context = vectara_client.retrieve_context(user_query, CORPUS_ID)
+    context = vectara_client.retrieve_context(user_query, VECTARA_CORPUS_ID)
     if not context:
         context = "No relevant context was found for your query."
     
