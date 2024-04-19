@@ -1,13 +1,17 @@
 # ./src/publish
+import os
+from huggingface_hub import HfApi
+
 
 class VectonicPublisher:
-    def __init__(self, title, api_key, model_name):
+    def __init__(self, title, vectara_userid, vectara_api_key, corpusid, huggingface_api_key, together_api_key, model_name):
         self.title = title
-        self.api_key = api_key
+        self.vectara_userid =  os.getenv("VECTARA_USER_ID")
+        self.vectara_api_key =  os.getenv("VECTARA_API_KEY")
+        self.vectara_corpusid =  os.getenv("VECTARA_CORPUS_ID")
+        self.together_api_key =  os.getenv("TOGETHER_API_KEY")
+        self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
         self.model_name = model_name
-        # self.api = HfApi()
-        # self.deploy_router = DeployRouting(model_name)
-        # self.api_key_router = APIKeyRouter(model_name)
         self.hf_token, self.systemprompt, self.userprompt = self.load_environment_variables()
 
         if not self.hf_token:
@@ -26,7 +30,7 @@ class VectonicPublisher:
         deployment_path = self.deploy_router.get_deployment_path()
         title = (self.title[:30])  # Ensuring title does not exceed max bytes
         new_space = self.api.create_repo(
-            repo_id=f"tonic-ai-torchon-{title}",
+            repo_id=f"Vectonic-{title}",
             repo_type="space",
             exist_ok=True,
             private=False,
@@ -44,11 +48,12 @@ class VectonicPublisher:
                     token=self.hf_token,
                     repo_type="space",
                 )
-        # Add secrets
-        api_key = self.api_key_router.get_key_for_model()
-        self.api.add_space_secret(new_space.repo_id, "HF_TOKEN", self.hf_token, token=self.hf_token)
-        self.api.add_space_secret(new_space.repo_id, "API_KEY", api_key, token=self.hf_token)
+        
+        self.api.add_space_secret(new_space.repo_id, "HF_TOKEN", self.huggingface_api_key, token=self.huggingface_api_key)
+        self.api.add_space_secret(new_space.repo_id, "VECTARA_API_KEY", self.vectara_api_key, token=self.vectara_api_key)
         self.api.add_space_secret(new_space.repo_id, "SYSTEM_PROMPT", self.systemprompt, token=self.hf_token)
-        self.api.add_space_secret(new_space.repo_id, "USER_PROMPT", self.userprompt, token=self.hf_token)
+        self.api.add_space_secret(new_space.repo_id, "VECTARA_USER_ID", self.vectara_userid, token=self.vectara_userid)
+        self.api.add_space_secret(new_space.repo_id, "TOGETHER_API_KEY", self.together_api_key, token=self.together_api_key)
+        self.api.add_space_secret(new_space.repo_id, "VECTARA_CORPUS_ID", self.userprompt, token=self.hf_token)
 
         return f"Published to https://huggingface.co/spaces/{new_space.repo_id}"
