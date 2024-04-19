@@ -1,4 +1,5 @@
 # main.py 
+
 import json
 from pathlib import Path
 
@@ -9,9 +10,7 @@ from vectara_cli.core import VectaraClient, QueryRequest, QueryResponse
 from vectara_cli.rebel_span.noncommercial.nerdspan import Span
 from vectara_cli.rebel_span.commercial.enterprise import EnterpriseSpan
 import nest_asyncio
-
-nest_asyncio.apply()
-
+import requests
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 import unstructured
@@ -20,6 +19,9 @@ from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
+
+nest_asyncio.apply()
+
 class DataLoading:
     def __init__(self, folder_path: str, text_folder_path: str):
         self.folder_path = folder_path
@@ -183,6 +185,43 @@ class Retriever:
             return response['choices'][0]['message']['content']
         else:
             return "No response generated."
+        
+    def use_together_api(self, completion_context: str, model_info: dict):
+        """
+        Sends a completion request to the Together API based on provided model information and context.
+        """
+        headers = {
+            "Authorization": "Bearer YOUR_BEARER_TOKEN"  # You need to replace this with your actual bearer token
+        }
+        
+        data = {
+            "model": model_info['model_string'],
+            "prompt": completion_context,
+            "max_tokens": model_info['max_tokens'],
+            "temperature": model_info['temperature'],
+            "top_p": model_info['top_p'] if 'top_p' in model_info else 1,
+            "top_k": model_info['top_k'] if 'top_k' in model_info else 40,
+            "repetition_penalty": model_info['repetition_penalty'] if 'repetition_penalty' in model_info else 1,
+        }
+        
+        response = requests.post('https://api.together.xyz/v1/completions', json=data, headers=headers)
+        return response.json()
+
+    def process_user_questions(client: VectaraClient, questions: List[str], corpus_id: int, model_infos: Dict[str, dict]):
+        retriever = Retriever(client)
+        
+        for question in questions:
+            print(f"\nProcessing question: {question}")
+            results = retriever.retrieve_information(question, corpus_id)
+            
+            # Assuming you want to use the first result's context for simplicity:
+            if results:
+                context = results[0].extracted_text
+                # Iterate over available models and fetch responses
+                for model_name, model_info in model_infos.items():
+                    print(f"Using model: {model_name}")
+                    response = retriever.use_together_api(context + '\n' + question, model_info)
+                    print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
 
 if __name__ == "__main__":
     customer_id = 123456  # Replace with your customer ID
@@ -221,6 +260,36 @@ if __name__ == "__main__":
     if markdown_corpus_id:
         print("Indexing processed Markdown chunks...")
         vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
+    # Define model information based on Together API details
+    model_infos = {
+        "Qwen": {
+            "model_string": "Qwen/Qwen1.5-72B",
+            "max_tokens": 4096,
+            "temperature": 0.7
+        },
+        "Meta-Llama": {
+            "model_string": "meta-llama/Meta-Llama-3-70B",
+            "max_tokens": 8192,
+            "temperature": 1,
+            "top_p": 0.7,
+            "top_k": 50,
+            "repetition_penalty": 1.0
+        }
+    }
+    
+    # Sample questions - Place where user questions array is expected
+    user_questions = [
+        "What are the current trends in AI?",
+        "How is climate change impacting ocean levels?",
+        "Discuss the advancements in renewable energy technologies."
+    ]
+    
+    # Assume a predefined corpus ID (replace with actual corpus ID you want to use)
+    corpus_id = 87654321
+    
+    # Process user questions
+    Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
+
 
 # class DataLoading:
 #     def __init__(self, folder_path: str):
