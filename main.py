@@ -19,7 +19,7 @@ from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
-from tonic_validate import Benchmark, ValidateScorer, Metric, LLMResponse , ValidateScorer, AnswerSimilarityScore, RetrievalPrecision, AugmentationAccuracy, AnswerConsistency, Latency, ContainsText
+from tonic_validate import Benchmark, ValidateScorer, LLMResponse , ValidateScorer, AnswerSimilarityScore, RetrievalPrecision, AugmentationAccuracy, AnswerConsistency, Latency, ContainsText
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -246,8 +246,8 @@ class EvaluationModule:
         return evaluation_results
 
 if __name__ == "__main__":
-    customer_id = 123456  # Replace with your customer ID
-    api_key = 'your_vectara_api_key'  # Replace with your API key
+    customer_id = os.getenv("VECTARA_USER_ID")  # Replace with your customer ID
+    api_key = os.getenv("VECTARA_API_KEY")  # Replace with your API key
 
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
