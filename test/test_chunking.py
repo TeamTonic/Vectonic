@@ -35,7 +35,13 @@ def test_chunking(doc_list):
     )
     
     vectara_client.index_text(
-        
+        1,
+        8666,
+        "text",
+        "",
+        "{}",
+        None,
+        30
     )
     data = []
     # for i in get_text:
