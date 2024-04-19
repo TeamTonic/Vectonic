@@ -1,0 +1,3 @@
+vectara-cli
+llama_index
+gradio
