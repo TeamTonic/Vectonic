@@ -19,6 +19,7 @@ from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
+from tonic_validate import Benchmark, ValidateScorer, Metric, LLMResponse , ValidateScorer, AnswerSimilarityScore, RetrievalPrecision, AugmentationAccuracy, AnswerConsistency, Latency, ContainsText
 
 nest_asyncio.apply()
 
@@ -223,6 +224,53 @@ class Retriever:
                     response = retriever.use_together_api(context + '\n' + question, model_info)
                     print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
 
+class EvaluationModule:
+    def __init__(self, client, corpus_id, model_infos):
+        self.client = client
+        self.corpus_id = corpus_id
+        self.model_infos = model_infos
+        self.corpus_ids = corpus_ids
+        self.scorer = ValidateScorer([
+            ContainsText(),
+            Latency(),
+            AnswerConsistency(),
+            AugmentationAccuracy(),
+            RetrievalPrecision(),
+            AnswerSimilarityScore()
+        ])
+
+    def process_queries(self, user_questions):
+        retriever = Retriever(self.client)
+        responses = []
+
+        for question in user_questions:
+            print(f"\nProcessing question: {question}")
+            results = retriever.retrieve_information(question, self.corpus_id)
+
+            if results:
+                context = results[0].extracted_text
+                for model_name, model_info in self.model_infos.items():
+                    print(f"Using model: {model_name}")
+                    formatted_prompt = retriever.prompt_formatting("Provide a detailed answer:", context, question)
+                    response_text = retriever.query_together_llm(formatted_prompt, model=model_info['model_string'],
+                                                                 tokens_limit=model_info['max_tokens'],
+                                                                 temperature=model_info['temperature'])
+                    print(f"Response from {model_name}: {response_text}")
+
+                    # Prepare response for scoring
+                    llm_response = LLMResponse(
+                        llm_answer=response_text,
+                        benchmark_item=(question, "Paris") # assuming 'Paris' is the correct answer for simplicity
+                    )
+                    responses.append(llm_response)
+
+                    # Print response for clarity
+                    print(f"Model {model_name} responded with: {response_text}")
+
+        benchmark = self.create_benchmark([q for q in user_questions], ["Correct answer"] * len(user_questions))
+        evaluation_results = self.evaluate_responses(benchmark, responses)
+        return evaluation_results
+
 if __name__ == "__main__":
     customer_id = 123456  # Replace with your customer ID
     api_key = 'your_vectara_api_key'  # Replace with your API key
@@ -235,7 +283,6 @@ if __name__ == "__main__":
 
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
-
 
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
@@ -289,7 +336,10 @@ if __name__ == "__main__":
     
     # Process user questions
     Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
-
+    # Example use of EvaluationModule
+    evaluation_module = EvaluationModule(vectara_indexer, corpus_id=87654321, model_infos=model_infos)
+    evaluation_module.process_queries(user_questions)
+    # Continue
 
 # class DataLoading:
 #     def __init__(self, folder_path: str):
@@ -326,3 +376,84 @@ if __name__ == "__main__":
 #     data_loader = DataLoading(folder_path='./your_data_here')
 #     data_loader.process_files()
 #     #Continue
+
+
+
+# Dummy definitions for testing purposes (these should be properly imported or defined based on actual use)
+# class Benchmark:
+#     def __init__(self, questions, answers):
+#         self.items = list(zip(questions, answers))
+        
+# class ValidateScorer:
+#     def score_responses(self, responses):
+#         print("Scoring responses...")
+#         result_data = {}
+#         for response in responses:
+#             result_data[response.benchmark_item[0]] = {'score': 5}
+# #         return result_data
+# # Define custom metrics if necessary
+# class CustomMetric(Metric):
+#     def compute(self, ground_truth, prediction):
+#         # example dummy computation
+#         return abs(len(ground_truth) - len(prediction))
+
+# # Instantiate scorer with various metrics
+# scorer = ValidateScorer(metrics=[
+#     AnswerSimilarityScore(),
+#     RetrievalPrecision(),
+#     AugmentationAccuracy(),
+#     AnswerConsistency(),
+#     Latency(),
+#     ContainsText(),
+#     CustomMetric()
+# ])
+# If not defined in your environment you would typically do it like this:
+# # Note: This is a placeholder and actual class definitions should come from the tonic_validate library.
+# class Benchmark:
+#     def __init__(self, questions, answers):
+#         self.questions = questions
+#         self.answers = answers
+
+# class ValidateScorer:
+#     def __init__(self, metrics=None):
+#         self.metrics = metrics or []
+
+#     def score_responses(self, benchmark, responses):
+#         # Dummy scoring logic
+#         scored_data = []
+#         for response in responses:
+#             scores = {type(metric).__name__: metric.compute(response.llm_answer, response.benchmark_item[1]) 
+#                       for metric in self.metrics}
+#             scored_data.append((response.benchmark_item, scores))
+#         return scored_data
+
+# Redefining EvaluateModule to actually incorporate the actual ValidateScorer and Benchmark
+# class EvaluateMetrics:
+#     def __init__(self):
+#         # Setup the metrics
+#         self.metrics = [
+#             self.AnswerSimilarityMetric(),
+#             self.RetrievalPrecisionMetric(),
+#             self.AugmentationPrecisionMetric(),
+#             self.AugmentationAccuracyMetric(),
+#             self.AnswerConsistencyMetric(),
+#             self.LatencyMetric(),
+#             self.ContainsTextMetric()
+#         ]
+#         self.scorer = ValidateScorer(self.metrics)
+
+#     def evaluate(self, questions, actual_responses):
+        # Create a benchmark for the evaluation
+        # expected_answers = ["Paris"] * len(questions) # Example, replace with actual expected answers
+        # benchmark = Benchmark(questions, expected_answers)
+        
+        # Create responses to score
+        # responses = [
+        #     LLMResponse(llm_answer=response, benchmark_item=item)
+        #     for response, item in zip(actual_responses, zip(benchmark.questions, benchmark.answers))
+        # ]
+        
+        # scored = self.scorer.score_responses(benchmark, responses)
+        
+        # for item, result in scored:
+        #     print(f"Question: {item[0]}, Expected: {item[1]}, Scores: {result}")
