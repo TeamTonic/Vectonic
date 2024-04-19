@@ -27,9 +27,15 @@ from tonic_validate.metrics.answer_consistency_metric import AnswerConsistencyMe
 from tonic_validate.metrics.latency_metric import LatencyMetric as Latency
 from tonic_validate.metrics.contains_text_metric import ContainsTextMetric as ContainsText
 from dotenv import load_dotenv
+from together import Together
+from together.resources.completions import Completions
+from together.types.abstract import TogetherClient
+from together.types.completions import CompletionResponse
 
 load_dotenv()
 nest_asyncio.apply()
+
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
 class DataLoading:
     def __init__(self, folder_path: str, text_folder_path: str):
@@ -160,6 +166,12 @@ class Retriever:
     def query_together_llm(self, context: str, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
         prompt = self.prompt_formatting(context, query)
         llm = TogetherLLM(model=model, max_tokens=tokens_limit, temperature=temperature)
+        client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": query}],
+        )
+        print(response.choices[0].message.content)
         
         # Prepare and send the request
         response = llm.complete(prompt)
@@ -172,12 +184,12 @@ class Retriever:
         
     def use_together_api(self, completion_context: str, model_info: dict):
         headers = {
-            "Authorization": "Bearer YOUR_BEARER_TOKEN"  # You need to replace this with your actual bearer token
+            "Authorization": f"Bearer {TOGETHER_API_KEY}"  # You need to replace this with your actual bearer token
         }
         
         data = {
-            "model": model_info['model_string'],
             "prompt": completion_context,
+            "model": model_info['model_string'],
             "max_tokens": model_info['max_tokens'],
             "temperature": model_info['temperature'],
             "top_p": model_info['top_p'] if 'top_p' in model_info else 1,
@@ -185,31 +197,77 @@ class Retriever:
             "repetition_penalty": model_info['repetition_penalty'] if 'repetition_penalty' in model_info else 1,
         }
         
-        response = requests.post('https://api.together.xyz/v1/completions', json=data, headers=headers)
-        return response.json()
+        # together_client = TogetherClient(
+        #     api_key=TOGETHER_API_KEY
+        # ) 
+        # together_completion_reponse:CompletionResponse = Completions(
+        #     client=together_client
+        # ).create(
+            
+        # prompt=completion_context,
+        # model=model_info['model_string'],
+        # max_tokens=model_info['max_tokens'],
+        # temperature=model_info['temperature'],
+        # # top_p=model_info['top_p'],
+        # # top_k=model_info['top_k'],
+        # # repetition_penalty=model_info['repetition_penalty'],
+        # )
+        
+        client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        reponse = client.chat.completions.create(
+            
+        model=model_info['model_string'],
+        max_tokens=model_info['max_tokens'],
+        temperature=model_info['temperature'],
+        messages=[{"role": "user", "content": completion_context}],
+        # top_p=model_info['top_p'],
+        # top_k=model_info['top_k'],
+        # repetition_penalty=model_info['repetition_penalty'],
+        )
+        return reponse
+        # response = requests.post('https://api.together.xyz/v1/completions', json=data, headers=headers)
+        # return response.json()
 
-    def process_user_questions(client: VectaraClient, questions: List[str], corpus_id: int, model_infos: Dict[str, dict]):
+    def process_user_questions(
+        client: VectaraClient, 
+        questions: List[str], 
+        corpus_id: int, 
+        model_infos: Dict[str, dict]
+    ):
+        #  )  -> List[Dict[str]]: 
         retriever = Retriever(client)
         
+        temp_name_list = []
         for question in questions:
             print(f"\nProcessing question: {question}")
             results = retriever.retrieve_information(question, corpus_id)
             
             # Assuming you want to use the first result's context for simplicity:
             if results:
-                context = results[0].extracted_text
+                # context = results[0].extracted_text
+                context = results[0].text
                 # Iterate over available models and fetch responses
+                
+                # response = retriever.use_together_api(context + '\n' + question, model_info)
+                # meta_data = {"model_info":model_info, "reponse": response, "context":context}
+                # for model_name, model_info in model_infos.items():
                 for model_name, model_info in model_infos.items():
                     print(f"Using model: {model_name}")
                     response = retriever.use_together_api(context + '\n' + question, model_info)
-                    print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
+                    contents = response.choices[0].message.content
+                    meta_data = {"model_info":model_info, "reponse": contents, "context":context}
+                    temp_name_list.append(meta_data)
+
+                        
+                #     print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
+        return temp_name_list
 
 class EvaluationModule:
     def __init__(self, client, corpus_id, model_infos):
         self.client = client
         self.corpus_id = corpus_id
         self.model_infos = model_infos
-        self.corpus_ids = corpus_ids
+        self.corpus_ids = corpus_id
         self.scorer = ValidateScorer([
             ContainsText(),
             Latency(),
@@ -254,6 +312,7 @@ class EvaluationModule:
 if __name__ == "__main__":
     customer_id = os.getenv("VECTARA_USER_ID")  # Replace with your customer ID
     api_key = os.getenv("VECTARA_API_KEY")  # Replace with your API key
+    corpus_id = os.getenv("VECTARA_CORPUS_ID")
 
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
@@ -263,6 +322,7 @@ if __name__ == "__main__":
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
+    vectara_client = VectaraClient(customer_id, api_key)
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
     enriched_corpus_id = vectara_indexer.create_corpus("Enriched Markdown Corpus")
@@ -279,12 +339,14 @@ if __name__ == "__main__":
     model_infos = {
         "Qwen": {
             "model_string": "Qwen/Qwen1.5-72B",
-            "max_tokens": 4096,
+            # "max_tokens": 2000,
+            "max_tokens": 10,
             "temperature": 0.7
         },
         "Meta-Llama": {
             "model_string": "meta-llama/Meta-Llama-3-70B",
-            "max_tokens": 8192,
+            # "max_tokens": 4000,
+            "max_tokens": 10,
             "temperature": 1,
             "top_p": 0.7,
             "top_k": 50,
@@ -300,9 +362,15 @@ if __name__ == "__main__":
     ]
     
     # Process user questions
-    Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
+    # Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
+    sample = Retriever.process_user_questions(vectara_client, user_questions, corpus_id, model_infos)
     # Example use of EvaluationModule
-    evaluation_module = EvaluationModule(vectara_indexer, corpus_id=87654321, model_infos=model_infos)
+    evaluation_module = EvaluationModule(
+        vectara_indexer, 
+        corpus_id=corpus_id, 
+        model_infos=model_infos
+        )
+    
     evaluation_module.process_queries(user_questions)
     # Continue
 
