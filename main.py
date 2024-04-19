@@ -49,7 +49,6 @@ class DataLoading:
                             md_file.write(text)
                         markdown_paths.append(markdown_file_path)
                         print(f"Markdown saved to {markdown_file_path}")
-
                 except Exception as e:
                     print(f"Error processing {file}: {str(e)}")
         return markdown_paths
@@ -61,19 +60,19 @@ class Chonker:
 
     def process_markdown_files(self) -> List[Tuple[str, List]]:
         """
-        Processes markdown files to extract structures using partition_md function.
+        Chonks markdown files to extract chonks(elements) using partition_md function.
         """
-        md_structure = []
+        # md_structure = []
         for md_file in self.markdown_files:
             try:
                 reader = UnstructuredReader(md_file)
                 content = reader.load_data()
-                elements = partition_md(content)
-                md_structure.append((md_file, elements))
-                print(f"Processed {md_file}: {elements}")
-            except Exception as e:
-                print(f"Error processing {md_file}: {str(e)}")
-        return md_structure
+                elements = partition_md(content) #refine parameterrs here
+            #     md_structure.append((md_file, elements))
+            #     print(f"Processed {md_file}: {elements}")
+            # except Exception as e:
+            #     print(f"Error processing {md_file}: {str(e)}")
+        return elements #, md_structure
 
 
 if __name__ == "__main__":

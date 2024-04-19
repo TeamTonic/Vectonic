@@ -86,7 +86,7 @@ class DataProcessor:
                 
             
             return reader    
-            raise ValueError(f"Unsupported source type: {self.source_file}")
+            # raise ValueError(f"Unsupported source type: {self.source_file}")
         except:
             print(f"Unsupported source type: {self.source_file}")
 
