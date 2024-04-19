@@ -73,17 +73,59 @@ class Chonker:
                 print(f"Error processing {md_file}: {str(e)}")
         return md_structure
 
+class VectaraDataIndexer:
+    def __init__(self, customer_id: int, api_key: str):
+        self.vectara_client = VectaraClient(customer_id, api_key)
+
+    def create_corpus(self, corpus_name: str) -> int:
+        corpus_data = {
+            "name": corpus_name,
+            "description": "A corpus for " + corpus_name,
+            "metadata": json.dumps({
+                "category": "Vectonic",
+            })
+        }
+        response = self.vectara_client.create_corpus(corpus_data)
+        if response.get('status', {}).get('code') == 'OK':
+            return response['corpusId']
+        else:
+            print("Failed to create corpus", response)
+            return None
+
+    def index_folder(self, corpus_id: int, folder_path: str):
+        results = self.vectara_client.index_documents_from_folder(corpus_id, folder_path)
+        return results
+
+    def index_markdown_chunks(self, corpus_id: int, markdown_chunks: Dict[str, List]):
+        for filepath, sections in markdown_chunks.items():
+            for index, section in enumerate(sections):
+                title = f"{Path(filepath).stem}-section-{index}"
+                document_id = f"{Path(filepath).stem}-{index}"
+                response, status = self.vectara_client.index_document(
+                    corpus_id, document_id, title, {"section_number": index}, section
+                )
+                print(f"Indexed section '{title}' status: {status}")
+
+
 if __name__ == "__main__":
+    customer_id = 123456789
+    api_key = "your_vectara_api_key_here"  
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
     data_loading = DataLoading(folder_path=folder_to_process, text_folder_path=markdown_output_folder)
     markdown_paths = data_loading.process_files()
-
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
-    # Now md_chunks contains the structured data from all markdown files for further processing
-    print(md_chunks)
-    # Continue
+    vectara_indexer = VectaraDataIndexer(customer_id, api_key)
+    folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
+    markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
+    if folder_corpus_id:
+        print("Indexing entire folder...")
+        vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
+    if markdown_corpus_id:
+        print("Indexing processed Markdown chunks...")
+        vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
+```
 
 # class DataLoading:
 #     def __init__(self, folder_path: str):
