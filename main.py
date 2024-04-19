@@ -1,8 +1,6 @@
 # main.py 
 
 from pathlib import Path
-from llama_index.core import SimpleDirectoryReader # https://docs.llamaindex.ai/en/stable/examples/data_connectors/simple_directory_reader/
-from llama_index.readers.file import UnstructuredReader # https://github.com/run-llama/llama_index/tree/main/llama-index-integrations/readers/llama-index-readers-file/llama_index/readers/file/unstructured
 
 from llama_index.llms.together import TogetherLLM
 import os
@@ -20,6 +18,8 @@ from llama_index.core import SimpleDirectoryReader
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
+from unstructured.partition.md import partition_md
+
 
 class DataLoading:
     def __init__(self, folder_path: str, text_folder_path: str):
@@ -29,7 +29,7 @@ class DataLoading:
 
     def process_files(self) -> List[str]:
         """
-        Method to process each file in the specified directory, store markdown, and return paths.
+        Method to process each file in the specified directory, extract Markdown content, and save it to files.
         """
         markdown_paths = []
         print(f"Processing files in folder: {self.folder_path}")
@@ -43,7 +43,7 @@ class DataLoading:
 
                     documents = reader.load_data(file_path)
                     for doc in documents:
-                        text = doc['text']  # Assuming each document has a 'text' key with markdown content
+                        text = doc['text']  # Assuming each document has a 'text' key
                         markdown_file_path = os.path.join(self.text_folder_path, f"{Path(file).stem}.md")
                         with open(markdown_file_path, 'w') as md_file:
                             md_file.write(text)
@@ -53,27 +53,25 @@ class DataLoading:
                     print(f"Error processing {file}: {str(e)}")
         return markdown_paths
 
-
 class Chonker:
     def __init__(self, markdown_files: List[str]):
         self.markdown_files = markdown_files
 
-    def process_markdown_files(self) -> List[Tuple[str, List]]:
+    def process_markdown_files(self) -> Dict[str, List]:
         """
-        Chonks markdown files to extract chonks(elements) using partition_md function.
+        Chunks markdown files to extract chunks (elements) using partition_md function.
         """
-        # md_structure = []
+        md_structure = {}
         for md_file in self.markdown_files:
             try:
-                reader = UnstructuredReader(md_file)
-                content = reader.load_data()
-                elements = partition_md(content) #refine parameterrs here
-            #     md_structure.append((md_file, elements))
-            #     print(f"Processed {md_file}: {elements}")
-            # except Exception as e:
-            #     print(f"Error processing {md_file}: {str(e)}")
-        return elements #, md_structure
-
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    markdown_content = f.read()
+                elements = partition_md(text=markdown_content)  # adapted to use text directly
+                md_structure[md_file] = elements
+                print(f"Processed {md_file}: {len(elements)} elements found")
+            except Exception as e:
+                print(f"Error processing {md_file}: {str(e)}")
+        return md_structure
 
 if __name__ == "__main__":
     folder_to_process = './your_data_here'
@@ -83,7 +81,9 @@ if __name__ == "__main__":
 
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
-    # Further processing can be done here with `md_chunks`
+    # Now md_chunks contains the structured data from all markdown files for further processing
+    print(md_chunks)
+    # Continue
 
 # class DataLoading:
 #     def __init__(self, folder_path: str):
@@ -115,8 +115,8 @@ if __name__ == "__main__":
 #                     print(f"Error processing {file}: {str(e)}")
 
 
-if __name__ == "__main__":
-    # Instance of DataLoading, pointing to the desired directory
-    data_loader = DataLoading(folder_path='./your_data_here')
-    data_loader.process_files()
-    #Continue
+# if __name__ == "__main__":
+#     # Instance of DataLoading, pointing to the desired directory
+#     data_loader = DataLoading(folder_path='./your_data_here')
+#     data_loader.process_files()
+#     #Continue
