@@ -19,7 +19,13 @@ from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
-from tonic_validate import Benchmark, ValidateScorer, LLMResponse , ValidateScorer, AnswerSimilarityScore, RetrievalPrecision, AugmentationAccuracy, AnswerConsistency, Latency, ContainsText
+from tonic_validate import Benchmark, ValidateScorer, LLMResponse
+from tonic_validate.metrics.answer_similarity_metric import  AnswerSimilarityMetric as AnswerSimilarityScore
+from tonic_validate.metrics.retrieval_precision_metric import RetrievalPrecisionMetric as RetrievalPrecision
+from tonic_validate.metrics.augmentation_accuracy_metric import AugmentationAccuracyMetric as AugmentationAccuracy
+from tonic_validate.metrics.answer_consistency_metric import AnswerConsistencyMetric as AnswerConsistency
+from tonic_validate.metrics.latency_metric import LatencyMetric as Latency
+from tonic_validate.metrics.contains_text_metric import ContainsTextMetric as ContainsText
 from dotenv import load_dotenv
 
 load_dotenv()
