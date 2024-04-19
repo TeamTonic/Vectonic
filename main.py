@@ -6,8 +6,8 @@ from llama_index.llms.together import TogetherLLM
 import os
 from src.dataloader import DataProcessor , DocumentLoader
 from vectara_cli.core import VectaraClient
-from vectara_cli.span_marker.noncommercial.nerdspan import Span
-from vectara_cli.span_marker.commercial.enterprise import EnterpriseSpan
+from vectara_cli.rebel_span.noncommercial.nerdspan import Span
+from vectara_cli.rebel_span.commercial.enterprise import EnterpriseSpan
 import nest_asyncio
 
 nest_asyncio.apply()
