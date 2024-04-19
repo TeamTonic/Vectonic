@@ -20,7 +20,9 @@ from src.chunking import MarkdownProcessor
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
 from tonic_validate import Benchmark, ValidateScorer, Metric, LLMResponse , ValidateScorer, AnswerSimilarityScore, RetrievalPrecision, AugmentationAccuracy, AnswerConsistency, Latency, ContainsText
+from dotenv import load_dotenv
 
+load_dotenv()
 nest_asyncio.apply()
 
 class DataLoading:
