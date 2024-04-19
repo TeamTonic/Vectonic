@@ -1,6 +1,7 @@
 # ./src/publish
 import os
 from huggingface_hub import HfApi
+from dotenv import load_dotenv
 
 
 class VectonicPublisher:
