@@ -252,10 +252,8 @@ if __name__ == "__main__":
 
     data_loading = DataLoading(folder_path=folder_to_process, text_folder_path=markdown_output_folder)
     markdown_paths = data_loading.process_files()
-
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
-
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
@@ -269,16 +267,6 @@ if __name__ == "__main__":
     if enriched_corpus_id:
         print("Processing and indexing enriched Markdown chunks...")
         vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id, md_chunks)
-
-    vectara_indexer = VectaraDataIndexer(customer_id, api_key)
-    folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
-    markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
-    if folder_corpus_id:
-        print("Indexing entire folder...")
-        vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
-    if markdown_corpus_id:
-        print("Indexing processed Markdown chunks...")
-        vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
     # Define model information based on Together API details
     model_infos = {
         "Qwen": {
@@ -302,9 +290,6 @@ if __name__ == "__main__":
         "How is climate change impacting ocean levels?",
         "Discuss the advancements in renewable energy technologies."
     ]
-    
-    # Assume a predefined corpus ID (replace with actual corpus ID you want to use)
-    corpus_id = 87654321
     
     # Process user questions
     Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
