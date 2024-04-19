@@ -125,7 +125,6 @@ if __name__ == "__main__":
     if markdown_corpus_id:
         print("Indexing processed Markdown chunks...")
         vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
-```
 
 # class DataLoading:
 #     def __init__(self, folder_path: str):
