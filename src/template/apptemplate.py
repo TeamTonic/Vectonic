@@ -47,6 +47,7 @@ class TogetherAIInterface:
         response = requests.post(url, headers=self.headers, json=data)
         return response.json().get('choices')[0]['text']
 
+
 # Application logic
 def chatbot_response(user_query):
     vectara_client = VectaraClientExtended(VECTARA_CUSTOMER_ID, VECTARA_API_KEY)
@@ -67,10 +68,10 @@ def chatbot_response(user_query):
 
 # Gradio interface setup
 def main():
-    iface = gr.Chatbot(
-        fn=chatbot_response,
+    iface = gr.Interface(
+        chatbot_response,
         inputs=gr.Textbox(lines=2, placeholder="Enter your query here..."),
-        outputs="text",
+        outputs=gr.Textbox(),
         title="Vectonic ChatBot",
         description="Optimized Using Tonicai. Powered by Vectara and TogetherAI. Ask anything!",
     )

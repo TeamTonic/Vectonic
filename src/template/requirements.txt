@@ -1,3 +1,4 @@
 vectara-cli
 llama_index
 gradio
+python-dotenv
