@@ -10,3 +10,4 @@ unstructured
 markdown
 tonic-validate
 spacy
+huggingface_hub
