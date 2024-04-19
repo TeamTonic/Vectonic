@@ -128,38 +128,61 @@ class Retriever:
     def __init__(self, client: VectaraClient):
         self.client = client
 
-    def retrieve_information(self, query: str, corpus_id: int, num_results: int = 10, context_config: Optional[dict] = None, summary_config: Optional[dict] = None) -> List[QueryResponse]:
+    def retrieve_information(self, query: str, corpus_id: int, num_results: int = 10, 
+                             context_config: Optional[dict] = None, summary_config: Optional[dict] = None) -> List[QueryResponse]:
         if not context_config:
             context_config = {}
         if not summary_config:
             summary_config = {}
-
+        
         response = self.client.advanced_query(query, num_results, corpus_id, context_config, summary_config)
         if 'error' in response:
             print(response['error'])
             return []
+        context = self.client._parse_query_response(response)
+        return context
 
-        return self.client._parse_query_response(response)
-
-    def query_together_llm(self, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
+    def prompt_formatting(self, systemprompt : str, context: str, query: str) -> str:
         """
-        Sends a query to the Together LLM using the given model
+        Formats the prompt to include context and question in a structured manner.
+        
         Args:
+            systemprompt (str): System Prompt
+            context (str): Contextual information or background details.
+            query (str): The actual question for the model.
+
+        Returns:
+            str: Formatted and JSON escaped string that is safe to be used as API payloads.
+        """
+        formatted_prompt = f"System Message:{systemprompt}\n\nContext:\n{context}\n\nQuestion:\n{query}"
+        # Return a JSON-escaped string
+        return json.dumps(formatted_prompt)
+
+    def query_together_llm(self, context: str, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
+        """
+        Sends a query to the Together LLM using the given model and generates a response based on the provided context and query.
+        
+        Args:
+            context (str): Contextual information preceding the query.
             query (str): The user query or prompt to send to the LLM.
-            model (str): The model identifier in the format 'organization/model-version'.
-            tokens_limit (int): Maximum number of tokens in the completion.
-            temperature (float): Controls randomness in the completion.        
+            model (str): The model identifier.
+            tokens_limit (int): Maximum number of response tokens.
+            temperature (float): Controls the randomness of the generation.
+
         Returns:
             str: The assistant's response as a string.
         """
-        # Ensure API key is provided via environment or during class instantiation
+        prompt = self.prompt_formatting(context, query)
         llm = TogetherLLM(model=model, max_tokens=tokens_limit, temperature=temperature)
-        response = llm.complete(query)
+        
+        # Prepare and send the request
+        response = llm.complete(prompt)
+        
+        # Extract and return the response
         if response['choices']:
             return response['choices'][0]['message']['content']
         else:
             return "No response generated."
-
 
 if __name__ == "__main__":
     customer_id = 123456  # Replace with your customer ID
