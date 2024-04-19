@@ -146,35 +146,10 @@ class Retriever:
         return context
 
     def prompt_formatting(self, systemprompt : str, context: str, query: str) -> str:
-        """
-        Formats the prompt to include context and question in a structured manner.
-        
-        Args:
-            systemprompt (str): System Prompt
-            context (str): Contextual information or background details.
-            query (str): The actual question for the model.
-
-        Returns:
-            str: Formatted and JSON escaped string that is safe to be used as API payloads.
-        """
         formatted_prompt = f"System Message:{systemprompt}\n\nContext:\n{context}\n\nQuestion:\n{query}"
-        # Return a JSON-escaped string
         return json.dumps(formatted_prompt)
 
     def query_together_llm(self, context: str, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
-        """
-        Sends a query to the Together LLM using the given model and generates a response based on the provided context and query.
-        
-        Args:
-            context (str): Contextual information preceding the query.
-            query (str): The user query or prompt to send to the LLM.
-            model (str): The model identifier.
-            tokens_limit (int): Maximum number of response tokens.
-            temperature (float): Controls the randomness of the generation.
-
-        Returns:
-            str: The assistant's response as a string.
-        """
         prompt = self.prompt_formatting(context, query)
         llm = TogetherLLM(model=model, max_tokens=tokens_limit, temperature=temperature)
         
@@ -188,9 +163,6 @@ class Retriever:
             return "No response generated."
         
     def use_together_api(self, completion_context: str, model_info: dict):
-        """
-        Sends a completion request to the Together API based on provided model information and context.
-        """
         headers = {
             "Authorization": "Bearer YOUR_BEARER_TOKEN"  # You need to replace this with your actual bearer token
         }
