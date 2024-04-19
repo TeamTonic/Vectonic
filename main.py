@@ -162,9 +162,36 @@ class Retriever:
     def prompt_formatting(self, systemprompt : str, context: str, query: str) -> str:
         formatted_prompt = f"System Message:{systemprompt}\n\nContext:\n{context}\n\nQuestion:\n{query}"
         return json.dumps(formatted_prompt)
+    
+    def prompt_generator(
+        self,
+        model="meta-llama/Meta-Llama-3-70B",
+        token_limit=500,
+        query="Please generate a system prompt"
+        ) -> str:
+        
+        llm = TogetherLLM(model=model, )
+        client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": query}],
+        )
+        return response.choices[0].message.content
+        
 
-    def query_together_llm(self, context: str, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
-        prompt = self.prompt_formatting(context, query)
+    def query_together_llm(
+        self, 
+        context: str, 
+        query: str, 
+        model: str, 
+        tokens_limit: int = 150, 
+        temperature: 
+        float = 0.7) -> str:
+        prompt = self.prompt_formatting(
+            
+            context=context, 
+            query=query
+            )
         llm = TogetherLLM(model=model, max_tokens=tokens_limit, temperature=temperature)
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
         response = client.chat.completions.create(
@@ -244,7 +271,6 @@ class Retriever:
             
             # Assuming you want to use the first result's context for simplicity:
             if results:
-                # context = results[0].extracted_text
                 context = results[0].text
                 # Iterate over available models and fetch responses
                 
@@ -269,7 +295,7 @@ class EvaluationModule:
         self.model_infos = model_infos
         self.corpus_ids = corpus_id
         self.scorer = ValidateScorer([
-            ContainsText(),
+            # ContainsText(),
             Latency(),
             AnswerConsistency(),
             AugmentationAccuracy(),
@@ -279,6 +305,8 @@ class EvaluationModule:
 
     def process_queries(self, user_questions):
         retriever = Retriever(self.client)
+        
+        sample = retriever.prompt_generator()
         responses = []
 
         for question in user_questions:
@@ -286,13 +314,20 @@ class EvaluationModule:
             results = retriever.retrieve_information(question, self.corpus_id)
 
             if results:
-                context = results[0].extracted_text
+                context = results[0].text
                 for model_name, model_info in self.model_infos.items():
                     print(f"Using model: {model_name}")
                     formatted_prompt = retriever.prompt_formatting("Provide a detailed answer:", context, question)
-                    response_text = retriever.query_together_llm(formatted_prompt, model=model_info['model_string'],
-                                                                 tokens_limit=model_info['max_tokens'],
-                                                                 temperature=model_info['temperature'])
+                    for question in user_questions:
+                        response_text = retriever.query_together_llm(
+                            
+                            formatted_prompt, 
+                            model=model_info['model_string'],
+                            tokens_limit=model_info['max_tokens'],
+                            temperature=model_info['temperature'],
+                            query=question
+                            )
+                        
                     print(f"Response from {model_name}: {response_text}")
 
                     # Prepare response for scoring
@@ -366,7 +401,7 @@ if __name__ == "__main__":
     sample = Retriever.process_user_questions(vectara_client, user_questions, corpus_id, model_infos)
     # Example use of EvaluationModule
     evaluation_module = EvaluationModule(
-        vectara_indexer, 
+        vectara_client, 
         corpus_id=corpus_id, 
         model_infos=model_infos
         )
