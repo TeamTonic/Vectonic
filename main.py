@@ -170,13 +170,18 @@ class Retriever:
         query="Please generate a system prompt"
         ) -> str:
         
-        llm = TogetherLLM(model=model, )
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
         response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": query}],
         )
-        return response.choices[0].message.content
+        
+        client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        reponse = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": query}],
+        )
+        return reponse.choices[0].message.content
         
 
     def query_together_llm(
@@ -224,22 +229,6 @@ class Retriever:
             "repetition_penalty": model_info['repetition_penalty'] if 'repetition_penalty' in model_info else 1,
         }
         
-        # together_client = TogetherClient(
-        #     api_key=TOGETHER_API_KEY
-        # ) 
-        # together_completion_reponse:CompletionResponse = Completions(
-        #     client=together_client
-        # ).create(
-            
-        # prompt=completion_context,
-        # model=model_info['model_string'],
-        # max_tokens=model_info['max_tokens'],
-        # temperature=model_info['temperature'],
-        # # top_p=model_info['top_p'],
-        # # top_k=model_info['top_k'],
-        # # repetition_penalty=model_info['repetition_penalty'],
-        # )
-        
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
         reponse = client.chat.completions.create(
             
@@ -247,13 +236,8 @@ class Retriever:
         max_tokens=model_info['max_tokens'],
         temperature=model_info['temperature'],
         messages=[{"role": "user", "content": completion_context}],
-        # top_p=model_info['top_p'],
-        # top_k=model_info['top_k'],
-        # repetition_penalty=model_info['repetition_penalty'],
         )
         return reponse
-        # response = requests.post('https://api.together.xyz/v1/completions', json=data, headers=headers)
-        # return response.json()
 
     def process_user_questions(
         client: VectaraClient, 
@@ -289,19 +273,27 @@ class Retriever:
         return temp_name_list
 
 class EvaluationModule:
-    def __init__(self, client, corpus_id, model_infos):
-        self.client = client
-        self.corpus_id = corpus_id
-        self.model_infos = model_infos
-        self.corpus_ids = corpus_id
-        self.scorer = ValidateScorer([
+    def __init__(self, client, corpus_id, model_infos,scorer = ValidateScorer([
             # ContainsText(),
             Latency(),
             AnswerConsistency(),
             AugmentationAccuracy(),
             RetrievalPrecision(),
             AnswerSimilarityScore()
-        ])
+        ])):
+        self.client = client
+        self.corpus_id = corpus_id
+        self.model_infos = model_infos
+        self.corpus_ids = corpus_id
+        # self.scorer = ValidateScorer([
+        #     # ContainsText(),
+        #     Latency(),
+        #     AnswerConsistency(),
+        #     AugmentationAccuracy(),
+        #     RetrievalPrecision(),
+        #     AnswerSimilarityScore()
+        # ])
+        self.scorer = scorer
 
     def process_queries(self, user_questions):
         retriever = Retriever(self.client)
@@ -403,8 +395,10 @@ if __name__ == "__main__":
     evaluation_module = EvaluationModule(
         vectara_client, 
         corpus_id=corpus_id, 
-        model_infos=model_infos
+        model_infos=model_infos,
+        scorer=[AnswerConsistency()],
         )
+    
     
     evaluation_module.process_queries(user_questions)
     # Continue
