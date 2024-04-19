@@ -18,6 +18,8 @@ DEFAULT_SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT")
 MODEL_NAME = os.getenv("MODEL_NAME", "databricks/dbrx-instruct")
 TITLE = os.getenv("TITLE")
 DESCRIPTION = os.getenv("DESCRIPTION")
+
+
 class VectaraClientExtended(VectaraClient):
     """ Enhanced Vectara Client with methods tailored for chatbot application. """
     def __init__(self, customer_id, api_key):
