@@ -3,15 +3,40 @@ import os
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 
+class DeployRouting:
+    def __init__(self, model_name):
+        self.model_name = model_name
+
+    def get_deployment_path(self):
+        base_path = './src/template/'
+        model_paths = {
+            'ClaudeApp': 'ClaudeApp/',
+            'GeminiApp': 'GeminiApp/',
+            'torchonhugsendpoints': 'torchonhugsendpoints/',
+            'torchonopenai': 'torchonopenai/',
+        }
+        return os.path.join(base_path, model_paths.get(self.model_name, ''))
+
+
 
 class VectonicPublisher:
-    def __init__(self, title, vectara_userid, vectara_api_key, corpusid, huggingface_api_key, together_api_key, model_name):
+    def __init__(
+        self, 
+        title, 
+        deploy_routing:DeployRouting,
+        vectara_userid = os.getenv("VECTARA_USER_ID"), 
+        vectara_api_key = os.getenv("VECTARA_API_KEY"), 
+        corpusid = os.getenv("VECTARA_CORPUS_ID"), 
+        huggingface_api_key = os.getenv("TOGETHER_API_KEY"), 
+        together_api_key = os.getenv("HUGGINGFACE_API_KEY"), 
+        model_name = "Meta-Llama",
+        ):
         self.title = title
-        self.vectara_userid =  os.getenv("VECTARA_USER_ID")
-        self.vectara_api_key =  os.getenv("VECTARA_API_KEY")
-        self.vectara_corpusid =  os.getenv("VECTARA_CORPUS_ID")
-        self.together_api_key =  os.getenv("TOGETHER_API_KEY")
-        self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
+        self.vectara_userid =  vectara_userid
+        self.vectara_api_key =  vectara_api_key
+        self.vectara_corpusid =  corpusid
+        self.together_api_key =  together_api_key
+        self.huggingface_api_key = huggingface_api_key
         self.model_name = model_name
         self.hf_token, self.systemprompt, self.userprompt = self.load_environment_variables()
 
@@ -58,3 +83,18 @@ class VectonicPublisher:
         self.api.add_space_secret(new_space.repo_id, "VECTARA_CORPUS_ID", self.userprompt, token=self.hf_token)
 
         return f"Published to https://huggingface.co/spaces/{new_space.repo_id}"
+
+
+if __name__ == '__main__':
+    
+    deploy_routing = DeployRouting(
+        model_name="Meta-Llama"
+    )
+    data = VectonicPublisher(
+        "Vectara Sample Space",
+        deploy_routing=deploy_routing
+    )
+    data.publish(
+        
+    )
+    x = 0
