@@ -5,7 +5,7 @@ from pathlib import Path
 from llama_index.llms.together import TogetherLLM
 import os
 from src.dataloader import DataProcessor , DocumentLoader
-from vectara_cli.core import VectaraClient
+from vectara_cli.core import VectaraClient, QueryRequest, QueryResponse
 from vectara_cli.rebel_span.noncommercial.nerdspan import Span
 from vectara_cli.rebel_span.commercial.enterprise import EnterpriseSpan
 import nest_asyncio
@@ -14,13 +14,12 @@ nest_asyncio.apply()
 
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
-
+import unstructured
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
-from unstructured.partition.md import partition_md
-
-
+from unstructured.partition.md import partition_md as partition_md
+from typing import List, Dict, Optional
 class DataLoading:
     def __init__(self, folder_path: str, text_folder_path: str):
         self.folder_path = folder_path
@@ -106,16 +105,90 @@ class VectaraDataIndexer:
                 )
                 print(f"Indexed section '{title}' status: {status}")
 
+    def index_markdown_chunks_with_entities(self, corpus_id: int, markdown_chunks: Dict[str, List]):
+        self.span_processor = Span(vectara_client=self.vectara_client, text="", model_name="fewnerdsuperfine", model_type="span_marker")
+        for filepath, sections in markdown_chunks.items():
+            for index, section in enumerate(sections):
+                title = f"{Path(filepath).stem}-section-{index}"
+                document_id = f"{Path(filepath).stem}-{index}"
+
+                # Set text for NER processing
+                self.span_processor.text = section
+                output_str, entities = self.span_processor.analyze_text()
+
+                enriched_text = output_str + "\n" + section
+                metadata = json.dumps({ent['label']: ent['span'] for ent in entities})
+
+                response, status = self.vectara_client.index_document(
+                    corpus_id, document_id, title, {}, enriched_text, metadata_json=metadata
+                )
+                print(f"Indexed enriched section '{title}' status: {status}")
+
+class Retriever:
+    def __init__(self, client: VectaraClient):
+        self.client = client
+
+    def retrieve_information(self, query: str, corpus_id: int, num_results: int = 10, context_config: Optional[dict] = None, summary_config: Optional[dict] = None) -> List[QueryResponse]:
+        if not context_config:
+            context_config = {}
+        if not summary_config:
+            summary_config = {}
+
+        response = self.client.advanced_query(query, num_results, corpus_id, context_config, summary_config)
+        if 'error' in response:
+            print(response['error'])
+            return []
+
+        return self.client._parse_query_response(response)
+
+    def query_together_llm(self, query: str, model: str, tokens_limit: int = 150, temperature: float = 0.7) -> str:
+        """
+        Sends a query to the Together LLM using the given model
+        Args:
+            query (str): The user query or prompt to send to the LLM.
+            model (str): The model identifier in the format 'organization/model-version'.
+            tokens_limit (int): Maximum number of tokens in the completion.
+            temperature (float): Controls randomness in the completion.        
+        Returns:
+            str: The assistant's response as a string.
+        """
+        # Ensure API key is provided via environment or during class instantiation
+        llm = TogetherLLM(model=model, max_tokens=tokens_limit, temperature=temperature)
+        response = llm.complete(query)
+        if response['choices']:
+            return response['choices'][0]['message']['content']
+        else:
+            return "No response generated."
+
 
 if __name__ == "__main__":
-    customer_id = 123456789
-    api_key = "your_vectara_api_key_here"  
+    customer_id = 123456  # Replace with your customer ID
+    api_key = 'your_vectara_api_key'  # Replace with your API key
+
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
+
     data_loading = DataLoading(folder_path=folder_to_process, text_folder_path=markdown_output_folder)
     markdown_paths = data_loading.process_files()
+
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
+
+
+    vectara_indexer = VectaraDataIndexer(customer_id, api_key)
+    folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
+    markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
+    enriched_corpus_id = vectara_indexer.create_corpus("Enriched Markdown Corpus")
+    if folder_corpus_id:
+        print("Indexing entire folder...")
+        vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
+    if markdown_corpus_id:
+        print("Indexing processed Markdown chunks...")
+        vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
+    if enriched_corpus_id:
+        print("Processing and indexing enriched Markdown chunks...")
+        vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id, md_chunks)
+
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
