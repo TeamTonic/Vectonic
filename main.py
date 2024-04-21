@@ -17,7 +17,7 @@ import unstructured
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
-from src.adv_publish import VectonicPublisher
+from src.publish import VectonicPublisher
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
 from tonic_validate import Benchmark, ValidateScorer, LLMResponse
@@ -289,11 +289,11 @@ class Retriever:
         return temp_name_list
 
 class EvaluationModule:
-    def __init__(self, client, corpus_id, model_infos):
+    def __init__(self, client, corpus_ids, model_infos):
         self.client = client
         self.corpus_id = corpus_id
         self.model_infos = model_infos
-        self.corpus_ids = corpus_id
+        self.corpus_ids = corpus_ids
         self.scorer = ValidateScorer([
             # ContainsText(),
             Latency(),
@@ -370,7 +370,8 @@ if __name__ == "__main__":
     if enriched_corpus_id:
         print("Processing and indexing enriched Markdown chunks...")
         vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id, md_chunks)
-    # Define model information based on Together API details
+    corpus_ids = [folder_corpus_id, markdown_corpus_id, enriched_corpus_id]
+
     model_infos = {
         "Qwen": {
             "model_string": "Qwen/Qwen1.5-72B",
@@ -389,25 +390,20 @@ if __name__ == "__main__":
         }
     }
     
-    # Sample questions - Place where user questions array is expected
+
+    # Instantiate the evaluation module
+    evaluation_module = EvaluationModule(vectara_client, model_infos=model_infos)
+
+    # Example user questions
     user_questions = [
         "What are the current trends in AI?",
         "How is climate change impacting ocean levels?",
         "Discuss the advancements in renewable energy technologies."
     ]
-    
-    # Process user questions
-    # Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
-    sample = Retriever.process_user_questions(vectara_client, user_questions, corpus_id, model_infos)
-    # Example use of EvaluationModule
-    evaluation_module = EvaluationModule(
-        vectara_client, 
-        corpus_id=corpus_id, 
-        model_infos=model_infos
-        )
-    
-    evaluation_module.process_queries(user_questions)
-    # Continue
+    # Run the evaluation
+    evaluation_results = evaluation_module.process_queries(corpus_ids=corpus_ids, user_questions=user_questions)
+
+    print(evaluation_results)
     publisher = VectonicPublisher()
     try:
         result = publisher.adv_publish()

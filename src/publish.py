@@ -1,97 +1,110 @@
-# ./src/publish
+# ./src/adv_publish.py
+
 import os
+import logging
+from typing import Optional
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 
 class VectonicPublisher:
-    def __init__(
-        self, 
-        title="Vectonic",
-        hf_api = HfApi() ,
-        model_name = "Meta-Llama",
-        system_prompt = "You are an unbiased, uncensored, helpful assistant.",
-        vectara_user_id = "",
-        vectara_api_key = "",
-        vectara_corpus_id = "",
-        together_api_key = "",
-        huggingface_api_key = ""
-        ):
-        self.hf_token, self.systemprompt, self.userprompt, self.vectara_api_key, self.vectara_userid, self.corpusid, self.together_api_key, self.huggingface_api_key = self.load_environment_variables()
+    def __init__(self, 
+                 title: str = "Vectonic02", 
+                 hf_api: Optional[HfApi] = None, 
+                 model_name: str = "Meta-Llama", 
+                 system_prompt: str = "You are an unbiased, uncensored, helpful assistant.",
+                 vectara_user_id: str = "", 
+                 vectara_api_key: str = "", 
+                 vectara_corpus_id: str = "", 
+                 together_api_key: str = "", 
+                 huggingface_api_key: str = ""):
+        self.load_environment_variables()
         self.title = title
-        self.vectara_userid =  vectara_user_id
-        self.vectara_api_key =  vectara_api_key
-        self.vectara_corpusid =  vectara_corpus_id
-        self.together_api_key =  together_api_key
-        self.huggingface_api_key = huggingface_api_key
+        self.vectara_user_id = vectara_user_id
+        self.vectara_api_key = vectara_api_key
+        self.vectara_corpus_id = vectara_corpus_id
+        self.together_api_key = together_api_key
+        self.huggingface_api_key = huggingface_api_key or os.getenv("HUGGINGFACE_API_KEY")
         self.model_name = model_name
         self.system_prompt = system_prompt
-        self.hf_token = huggingface_api_key
-        self.hf_api = hf_api(endpoint="https://huggingface.co", token=self.hf_token , repo_type = "spaces")
 
-        if not self.hf_token:
-            raise ValueError("Hugging Face API key not found. Please ensure it is defined in .env")
-    
-    @staticmethod
-    def load_environment_variables():
-        env_path = os.path.join(os.path.dirname(__file__), '..', 'config', '.env')
-        load_dotenv(dotenv_path=env_path)
-        hf_token = os.getenv("HUGGINGFACE_API_KEY")
-        systemprompt = os.getenv("SYSTEMPROMPT")
-        userprompt = os.getenv("USERPROMPT")
-        vectara_userid = os.getenv("VECTARA_USER_ID"), 
-        vectara_api_key = os.getenv("VECTARA_API_KEY"), 
-        corpusid = os.getenv("VECTARA_CORPUS_ID"), 
-        huggingface_api_key = os.getenv("TOGETHER_API_KEY"), 
-        together_api_key = os.getenv("HUGGINGFACE_API_KEY"), 
-        return hf_token , systemprompt , userprompt , vectara_api_key, vectara_userid, corpusid, together_api_key, huggingface_api_key
-
-    def publish(self):
-        deployment_path = "./src/template/"
-        title = (self.title[:30])  # Ensuring title does not exceed max bytes
-        new_space = self.hf_api.create_repo(
-            repo_id=f"Vectonic-{title}",
-            repo_type="space",
-            exist_ok=True,
-            private=True,
-            space_sdk="gradio",
-            token=self.hf_token,
-        )
-        for root, dirs, files in os.walk(deployment_path):
-            for file in files:
-                file_path = os.path.join(root, file)
-                path_in_repo = os.path.relpath(file_path, start=deployment_path)
-                self.hf_api.upload_file(
-                    repo_id=new_space.repo_id,
-                    path_or_fileobj=file_path,
-                    path_in_repo=path_in_repo,
-                    token=self.hf_token,
-                    repo_type="space",
-                )
+        self.hf_api = hf_api if hf_api else HfApi()
         
-        self.hf_api.add_space_secret(new_space.repo_id, "HF_TOKEN", self.huggingface_api_key, token=self.huggingface_api_key)
-        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_API_KEY", self.vectara_api_key, token=self.vectara_api_key)
-        self.hf_api.add_space_secret(new_space.repo_id, "SYSTEM_PROMPT", self.systemprompt, token=self.hf_token)
-        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_USER_ID", self.vectara_userid, token=self.vectara_userid)
-        self.hf_api.add_space_secret(new_space.repo_id, "TOGETHER_API_KEY", self.together_api_key, token=self.together_api_key)
-        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_CORPUS_ID", self.userprompt, token=self.hf_token)
+        if not self.huggingface_api_key:
+            logging.error("Hugging Face API key not found. Please ensure it is defined in the environment variables.")
+            raise ValueError("Hugging Face API key not found. Please ensure it is defined in the environment variables.")
 
-        return f"Published to https://huggingface.co/spaces/{new_space.repo_id}"
+    def load_environment_variables(self):
+        logging.info("Loading environment variables...")
+        load_dotenv()
+
+    def adv_publish(self) -> str:
+        repo_name = f"Vectonic-{self.title.replace(' ', '-')[:30]}"
+        template_path = "./src/template/"
+        logging.info(f"Attempting to create or access repository '{repo_name}'...")
+
+        try:
+            # Create or get the already existing repo
+            new_space = self.hf_api.create_repo(
+                repo_id=repo_name,
+                token=self.huggingface_api_key,
+                repo_type="space",
+                exist_ok=True,
+                private=True,
+                space_sdk="gradio"
+                )
+            logging.info(f"Repository '{repo_name}' accessed/created successfully.")
+
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+            raise
+
+        try:
+            namespace = self.hf_api.whoami(self.huggingface_api_key)["name"] 
+            print(f"Namespace: {namespace}")
+            
+            # Upload the entire folder
+            response = self.hf_api.upload_folder(
+                folder_path=template_path,
+                path_in_repo="", 
+                repo_id= f"{namespace}/{new_space.repo_name}" ,
+                token=self.huggingface_api_key,
+                repo_type="space",
+            )
+
+            logging.info(f"Files uploaded successfully to https://huggingface.co/spaces/{new_space.repo_id} with response: {response}")
+        except Exception as e:
+            logging.error(f"HTTP error during file upload: {str(e)}")
+            raise
+        try:
+            # Setting up the space secrets
+            secrets = {
+                "VECTARA_USER_ID": self.vectara_user_id,
+                "VECTARA_API_KEY": self.vectara_api_key,
+                "VECTARA_CORPUS_ID": self.vectara_corpus_id,
+                "TOGETHER_API_KEY": self.together_api_key,
+                "SYSTEM_PROMPT": self.system_prompt
+            }
+
+            for key, value in secrets.items():
+                if value:  # Only add secrets that are not None or empty
+                    self.hf_api.add_space_secret(
+                        repo_id=f"{namespace}/{new_space.repo_name}",
+                        key=key,
+                        value=value,
+                        token=self.huggingface_api_key
+                    )
+            logging.info("Secrets set up successfully.")
+        except Exception as e:
+            logging.error(f"Error setting secrets: {str(e)}")
+            raise
+
+        return f"Published to https://huggingface.co/spaces/{namespace}/{new_space.repo_id}"
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     publisher = VectonicPublisher()
     try:
         result = publisher.adv_publish()
-        print(result)
+        logging.info(result)
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-
-    # # deploy_routing = DeployRouting(
-    # #     model_name="Meta-Llama"
-    # # )
-    # data = VectonicPublisher(
-    #     "Vectara Sample Space",
-    #     # deploy_routing=deploy_routing
-    # )
-    # data.publish(
-        
-    # )
+        logging.error(f"An error occurred: {str(e)}")
