@@ -77,10 +77,13 @@ class VectonicPublisher:
 
         return f"Published to https://huggingface.co/spaces/{new_space.repo_id}"
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     publisher = VectonicPublisher()
-    print(publisher.publish())
+    try:
+        result = publisher.adv_publish()
+        print(result)
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
 
     # # deploy_routing = DeployRouting(
     # #     model_name="Meta-Llama"
