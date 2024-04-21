@@ -1,5 +1,5 @@
 # main.py 
-
+from span_marker.modeling import SpanMarkerModel
 import json
 from pathlib import Path
 
@@ -121,7 +121,7 @@ class VectaraDataIndexer:
                 title = f"{Path(filepath).stem}-section-{index}"
                 document_id = f"{Path(filepath).stem}-{index}"
                 response, status = self.vectara_client.index_document(
-                    corpus_id, document_id, title, {"section_number": index}, section
+                    corpus_id, document_id, title, {"section_number": index}, section.text
                 )
                 print(f"Indexed section '{title}' status: {status}")
 
@@ -134,15 +134,19 @@ class VectaraDataIndexer:
 
                 # Set text for NER processing
                 self.span_processor.text = section
-                output_str, entities = self.span_processor.analyze_text()
+                model = SpanMarkerModel.from_pretrained("tomaarsen/span-marker-bert-base-fewnerd-fine-super")
+                data =  model.predict(section.text)
+                # output_str, entities = self.span_processor.analyze_text()
+                
+                if data:
 
-                enriched_text = output_str + "\n" + section
-                metadata = json.dumps({ent['label']: ent['span'] for ent in entities})
+                    enriched_text = output_str + "\n" + section
+                    metadata = json.dumps({ent['label']: ent['span'] for ent in entities})
 
-                response, status = self.vectara_client.index_document(
-                    corpus_id, document_id, title, {}, enriched_text, metadata_json=metadata
-                )
-                print(f"Indexed enriched section '{title}' status: {status}")
+                    response, status = self.vectara_client.index_document(
+                        corpus_id, document_id, title, {}, enriched_text, metadata_json=metadata
+                    )
+                    print(f"Indexed enriched section '{title}' status: {status}")
 
 class Retriever:
     def __init__(self, client: VectaraClient):
@@ -168,7 +172,7 @@ class Retriever:
     
     def prompt_generator(
         self,
-        model="meta-llama/Meta-Llama-3-70B",
+        model="meta-llama/Llama-3-70b-chat-hf",
         token_limit=500,
         query="Please generate a system prompt"
         ) -> str:
@@ -176,20 +180,20 @@ class Retriever:
         llm = TogetherLLM(model=model, )
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
         
-        response_1 = client.chat.completions.create(
-            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-            messages=[{"role": "user", "content": query}],
-        )
+        # response_1 = client.chat.completions.create(
+        #     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+        #     messages=[{"role": "user", "content": query}],
+        # )
         
         response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": query}],
         )
         
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": query}],
-        )
+        # response = client.chat.completions.create(
+        #     model=model,
+        #     messages=[{"role": "user", "content": query}],
+        # )
         return response.choices[0].message.content
         
 
@@ -387,10 +391,10 @@ if __name__ == "__main__":
         vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
     if markdown_corpus_id:
         print("Indexing processed Markdown chunks...")
-        vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
+        vectara_indexer.index_markdown_chunks(markdown_corpus_id['data']['corpusId'], md_chunks)
     if enriched_corpus_id:
         print("Processing and indexing enriched Markdown chunks...")
-        vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id, md_chunks)
+        # vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id['data']['corpusId'], md_chunks)
     corpus_ids = [folder_corpus_id, markdown_corpus_id, enriched_corpus_id]
 
     model_infos = {
