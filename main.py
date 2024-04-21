@@ -102,12 +102,8 @@ class VectaraDataIndexer:
             })
         }
         response = self.vectara_client.create_corpus(corpus_data)
-        if response.get('status', {}).get('code') == 'OK':
-            return response['corpusId']
-        else:
-            print("Failed to create corpus", response)
-            return None
-
+        return response
+    
     def index_folder(self, corpus_id: int, folder_path: str):
         results = self.vectara_client.index_documents_from_folder(corpus_id, folder_path)
         return results
@@ -289,7 +285,7 @@ class Retriever:
         return temp_name_list
 
 class EvaluationModule:
-    def __init__(self, client, corpus_ids, model_infos):
+    def __init__(self, client:VectaraClient, corpus_ids:list, model_infos):
         self.client = client
         self.corpus_id = corpus_id
         self.model_infos = model_infos
@@ -358,9 +354,11 @@ if __name__ == "__main__":
     md_chunks = chonker.process_markdown_files()
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     vectara_client = VectaraClient(customer_id, api_key)
+    
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
     enriched_corpus_id = vectara_indexer.create_corpus("Enriched Markdown Corpus")
+    
     if folder_corpus_id:
         print("Indexing entire folder...")
         vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
@@ -390,9 +388,26 @@ if __name__ == "__main__":
         }
     }
     
+    evaluation_module = EvaluationModule(
+        vectara_client, 
+        model_infos=model_infos,
+        corpus_ids=[
+            folder_corpus_id,
+            markdown_corpus_id,
+            enriched_corpus_id,
+            ],
+        )
+    
+
+    
+    
 
     # Instantiate the evaluation module
-    evaluation_module = EvaluationModule(vectara_client, model_infos=model_infos)
+    # evaluation_module = EvaluationModule(
+    #     vectara_client, 
+    #     model_infos=model_infos
+        
+    #     )
 
     # Example user questions
     user_questions = [
@@ -401,7 +416,9 @@ if __name__ == "__main__":
         "Discuss the advancements in renewable energy technologies."
     ]
     # Run the evaluation
-    evaluation_results = evaluation_module.process_queries(corpus_ids=corpus_ids, user_questions=user_questions)
+    evaluation_results = evaluation_module.process_queries(
+        user_questions=user_questions
+        )
 
     print(evaluation_results)
     publisher = VectonicPublisher()
