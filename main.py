@@ -17,7 +17,7 @@ import unstructured
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
-from src.publish import VectonicPublisher
+from src.adv_publish import VectonicPublisher
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
 from tonic_validate import Benchmark, ValidateScorer, LLMResponse

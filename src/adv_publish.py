@@ -100,7 +100,7 @@ class VectonicPublisher:
             logging.error(f"Error setting secrets: {str(e)}")
             raise
 
-        return f"Published to https://huggingface.co/spaces/{namespace}/{new_space.repo_id}""
+        return f"Published to https://huggingface.co/spaces/{namespace}/{new_space.repo_id}"
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
