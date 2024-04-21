@@ -1,4 +1,4 @@
-# ./src/publish.py
+# ./src/adv_publish.py
 
 import os
 import logging
@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 class VectonicPublisher:
     def __init__(self, 
-                 title: str = "Vectonic02", 
+                 title: str = "Vectonic", 
                  hf_api: Optional[HfApi] = None, 
                  model_name: str = "Meta-Llama", 
                  system_prompt: str = "You are an unbiased, uncensored, helpful assistant.",
@@ -39,7 +39,7 @@ class VectonicPublisher:
 
     def adv_publish(self) -> str:
         repo_name = f"Vectonic-{self.title.replace(' ', '-')[:30]}"
-        template_path = "./src/template/"
+        template_path = "./templates"
         logging.info(f"Attempting to create or access repository '{repo_name}'...")
 
         try:
@@ -51,7 +51,7 @@ class VectonicPublisher:
                 exist_ok=True,
                 private=True,
                 space_sdk="gradio"
-                )
+            )
             logging.info(f"Repository '{repo_name}' accessed/created successfully.")
 
         except Exception as e:
@@ -60,21 +60,23 @@ class VectonicPublisher:
 
         try:
             namespace = self.hf_api.whoami(self.huggingface_api_key)["name"] 
-            print(f"Namespace: {namespace}")
-            
-            # Upload the entire folder
-            response = self.hf_api.upload_folder(
-                folder_path=template_path,
-                path_in_repo="", 
-                repo_id= f"{namespace}/{new_space.repo_name}" ,
-                token=self.huggingface_api_key,
-                repo_type="space",
-            )
-
-            logging.info(f"Files uploaded successfully to https://huggingface.co/spaces/{new_space.repo_id} with response: {response}")
+            # Upload files from the template directory
+            for root, dirs, files in os.walk(template_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    path_in_repo = os.path.relpath(file_path, start=template_path)
+                    self.hf_api.upload_file(
+                        path_or_fileobj=file_path,
+                        path_in_repo=path_in_repo,
+                        repo_id = f"{namespace}/{new_space.repo_id}",
+                        token=self.huggingface_api_key,
+                        repo_type="space"
+                    )
+            logging.info(f"Files uploaded successfully to https://huggingface.co/spaces/{namespace}/{new_space.repo_id}.")
         except Exception as e:
             logging.error(f"HTTP error during file upload: {str(e)}")
             raise
+
         try:
             # Setting up the space secrets
             secrets = {
@@ -88,9 +90,9 @@ class VectonicPublisher:
             for key, value in secrets.items():
                 if value:  # Only add secrets that are not None or empty
                     self.hf_api.add_space_secret(
-                        repo_id=f"{namespace}/{new_space.repo_name}",
-                        key=key,
-                        value=value,
+                        repo_id=f"{namespace}/{new_space.repo_id}",
+                        secret_name=key,
+                        secret_value=value,
                         token=self.huggingface_api_key
                     )
             logging.info("Secrets set up successfully.")

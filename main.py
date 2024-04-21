@@ -17,6 +17,7 @@ import unstructured
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
+from src.adv_publish import VectonicPublisher
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
 from tonic_validate import Benchmark, ValidateScorer, LLMResponse
@@ -31,7 +32,6 @@ from together import Together
 from together.resources.completions import Completions
 from together.types.abstract import TogetherClient
 from together.types.completions import CompletionResponse
-
 load_dotenv()
 nest_asyncio.apply()
 
@@ -402,7 +402,12 @@ if __name__ == "__main__":
     
     evaluation_module.process_queries(user_questions)
     # Continue
-
+    publisher = VectonicPublisher()
+    try:
+        result = publisher.adv_publish()
+        print(result)
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
 # class DataLoading:
 #     def __init__(self, folder_path: str):
 #         self.folder_path = folder_path
