@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # ./src/adv_publish.py
+=======
+# ./src/publish.py
+>>>>>>> 46668b1c936b45f16f839e6d7c305a535a2d7492
 
 import os
 import logging

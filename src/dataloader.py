@@ -114,9 +114,7 @@ class DataProcessor:
             '.pptx': PptxReader,
             '.rtf': RTFReader,
             '.xml': XMLReader,
-            '.txt': FlatReader,  # Assuming FlatReader is for .txt files
-            # .csv extension has multiple readers, I'm assuming PagedCSVReader and PandasCSVReader
-            # are specific cases that would be handled elsewhere, hence using CSVReader as default
+            '.txt': FlatReader,
         }
         image_readers = {
             '.jpg': ImageCaptionReader(self.source_file, return_full_document=True),  # or ImageTabularChartReader, ImageVisionLLMReader based on content
