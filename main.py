@@ -32,6 +32,8 @@ from together import Together
 from together.resources.completions import Completions
 from together.types.abstract import TogetherClient
 from together.types.completions import CompletionResponse
+from src.utils import get_all_files
+
 load_dotenv()
 nest_asyncio.apply()
 
@@ -49,24 +51,29 @@ class DataLoading:
         """
         markdown_paths = []
         print(f"Processing files in folder: {self.folder_path}")
+        all_file_from_directory = get_all_files(self.folder_path)
+        
+        
+        
         for root, _, files in os.walk(self.folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
-                try:
-                    reader = DataProcessor.choose_reader(file_path)
-                    if not reader:
-                        continue
+                # try:
+                reader = DataProcessor(file_path).choose_reader(file_path)
+                if not reader:
+                    continue
 
-                    documents = reader.load_data(file_path)
-                    for doc in documents:
-                        text = doc['text']  # Assuming each document has a 'text' key
-                        markdown_file_path = os.path.join(self.text_folder_path, f"{Path(file).stem}.md")
-                        with open(markdown_file_path, 'w') as md_file:
-                            md_file.write(text)
-                        markdown_paths.append(markdown_file_path)
-                        print(f"Markdown saved to {markdown_file_path}")
-                except Exception as e:
-                    print(f"Error processing {file}: {str(e)}")
+                documents = reader.load_data(file_path)
+                for doc in documents:
+                    # text = doc['text']  # Assuming each document has a 'text' key
+                    text = doc.text  # Assuming each document has a 'text' key
+                    markdown_file_path = os.path.join(self.text_folder_path, f"{Path(file).stem}.md")
+                    with open(markdown_file_path, 'w') as md_file:
+                        md_file.write(text)
+                    markdown_paths.append(markdown_file_path)
+                    print(f"Markdown saved to {markdown_file_path}")
+                # except Exception as e:
+                    # print(f"Error processing {file}: {str(e)}")
         return markdown_paths
 
 class Chonker:
@@ -168,9 +175,20 @@ class Retriever:
         
         llm = TogetherLLM(model=model, )
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        
+        response_1 = client.chat.completions.create(
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+            messages=[{"role": "user", "content": query}],
+        )
+        
         response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": query}],
+        )
+        
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": query}],
         )
         return response.choices[0].message.content
         
@@ -348,7 +366,12 @@ if __name__ == "__main__":
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
 
-    data_loading = DataLoading(folder_path=folder_to_process, text_folder_path=markdown_output_folder)
+    data_loading = DataLoading(
+        folder_path=folder_to_process, 
+        text_folder_path=markdown_output_folder
+        )
+    
+    
     markdown_paths = data_loading.process_files()
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()

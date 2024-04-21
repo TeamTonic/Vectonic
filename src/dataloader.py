@@ -56,39 +56,39 @@ class DataProcessor:
             raise TypeError("Source must be a string (file path or URL).")
 
         # Load data using appropriate reader
-        try:
-            if ext == '.csv':
-                reader = PandasCSVReader(return_full_document=True)
-            elif ext == '.docx':
-                reader = DocxReader(return_full_document=True)
-            elif ext == '.epub':
-                reader = EpubReader(return_full_document=True)
-            elif ext == '.html':
-                reader = HTMLTagReader(return_full_document=True)
-            elif ext == '.hwp':
-                reader = HWPReader(return_full_document=True)
-            elif ext == '.ipynb':
-                reader = IPYNBReader(return_full_document=True)
-            elif ext in ['.png', '.jpg', '.jpeg']:
-                reader = ImageReader(return_full_document=True)  # Assuming ImageReader can handle common image formats
-            elif ext == '.md':
-                reader = MarkdownReader(return_full_document=True)
-            elif ext == '.mbox':
-                reader = MboxReader(return_full_document=True)
-            elif ext == '.pdf':
-                reader = PDFReader(return_full_document=True)
-            elif ext == '.pptx':
-                reader = PptxReader(return_full_document=True)
-            elif ext == '.rtf':
-                reader = RTFReader(return_full_document=True)
-            elif ext == '.xml':
-                reader = XMLReader(return_full_document=True)
-                
+        # try:
+        if ext == '.csv':
+            reader = PandasCSVReader(return_full_document=True)
+        elif ext == '.docx':
+            reader = DocxReader(return_full_document=True)
+        elif ext == '.epub':
+            reader = EpubReader(return_full_document=True)
+        elif ext == '.html':
+            reader = HTMLTagReader(return_full_document=True)
+        elif ext == '.hwp':
+            reader = HWPReader(return_full_document=True)
+        elif ext == '.ipynb':
+            reader = IPYNBReader(return_full_document=True)
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            reader = ImageReader(return_full_document=True)  # Assuming ImageReader can handle common image formats
+        elif ext == '.md':
+            reader = MarkdownReader(return_full_document=True)
+        elif ext == '.mbox':
+            reader = MboxReader(return_full_document=True)
+        elif ext == '.pdf':
+            reader = PDFReader(return_full_document=True)
+        elif ext == '.pptx':
+            reader = PptxReader(return_full_document=True)
+        elif ext == '.rtf':
+            reader = RTFReader(return_full_document=True)
+        elif ext == '.xml':
+            reader = XMLReader(return_full_document=True)
             
-            return reader    
+        
+        return reader    
             # raise ValueError(f"Unsupported source type: {self.source_file}")
-        except:
-            print(f"Unsupported source type: {self.source_file}")
+        # except:
+        #     print(f"Unsupported source type: {self.source_file}")
 
     def choose_reader(self, file_path: str) -> Optional[object]:
         """Selects the appropriate reader for a given file based on its extension."""
@@ -117,9 +117,9 @@ class DataProcessor:
             '.txt': FlatReader,
         }
         image_readers = {
-            '.jpg': ImageCaptionReader(self.source_file, return_full_document=True),  # or ImageTabularChartReader, ImageVisionLLMReader based on content
-            '.jpeg': ImageCaptionReader(self.source_file, return_full_document=True),
-            '.png': ImageTabularChartReader(self.source_file, return_full_document=True),
+            '.jpg': ImageCaptionReader(self.source_file),  # or ImageTabularChartReader, ImageVisionLLMReader based on content
+            '.jpeg': ImageCaptionReader(self.source_file),
+            '.png': ImageTabularChartReader(self.source_file),
         }
         
         # If the file is an image and has a specialized reader, use that.
@@ -135,7 +135,7 @@ class DocumentLoader:
     # def load_documents_from_folder(folder_path: str) -> list[Document]:
     def load_documents_from_folder(folder_path:str="./add_your_files_here"):
         """Loads documents from files within a specified folder"""
-        folder_path = "./add_your_files_here"
+        # folder_path = "./add_your_files_here"
         documents = []
         for root, _, filenames in os.walk(folder_path):
             for filename in filenames:
@@ -148,13 +148,17 @@ class DocumentLoader:
                 if reader:
                     print(f"Loading document from '{filename}' with {type(reader).__name__}")
                     
-                    try:
-                        # docs = list(reader.load_data(input_files=[full_path]))
-                        docs = reader.load_data_from_source_and_store()
-                        current_document = docs.load_data(reader.source_file)
-                        documents.extend(current_document)
+                    docs = reader.load_data_from_source_and_store()
+                    current_document = docs.load_data(reader.source_file)
+                    documents.extend(current_document)                    
+                    
+                    # try:
+                    #     # docs = list(reader.load_data(input_files=[full_path]))
+                    #     docs = reader.load_data_from_source_and_store()
+                    #     current_document = docs.load_data(reader.source_file)
+                    #     documents.extend(current_document)
                         
-                    except Exception as e:
-                        print(f"Failed to load document from '{filename}'. Error: {e}")
+                    # except Exception as e:
+                    #     print(f"Failed to load document from '{filename}'. Error: {e}")
 
         return documents
