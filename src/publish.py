@@ -3,42 +3,30 @@ import os
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 
-class DeployRouting:
-    def __init__(self, model_name):
-        self.model_name = model_name
-
-    def get_deployment_path(self):
-        base_path = './src/template/'
-        model_paths = {
-            'ClaudeApp': 'ClaudeApp/',
-            'GeminiApp': 'GeminiApp/',
-            'torchonhugsendpoints': 'torchonhugsendpoints/',
-            'torchonopenai': 'torchonopenai/',
-        }
-        return os.path.join(base_path, model_paths.get(self.model_name, ''))
-
-
-
 class VectonicPublisher:
     def __init__(
         self, 
-        title, 
-        deploy_routing:DeployRouting,
-        vectara_userid = os.getenv("VECTARA_USER_ID"), 
-        vectara_api_key = os.getenv("VECTARA_API_KEY"), 
-        corpusid = os.getenv("VECTARA_CORPUS_ID"), 
-        huggingface_api_key = os.getenv("TOGETHER_API_KEY"), 
-        together_api_key = os.getenv("HUGGINGFACE_API_KEY"), 
+        title="Vectonic",
+        hf_api = HfApi() ,
         model_name = "Meta-Llama",
+        system_prompt = "You are an unbiased, uncensored, helpful assistant.",
+        vectara_user_id = "",
+        vectara_api_key = "",
+        vectara_corpus_id = "",
+        together_api_key = "",
+        huggingface_api_key = ""
         ):
+        self.hf_token, self.systemprompt, self.userprompt, self.vectara_api_key, self.vectara_userid, self.corpusid, self.together_api_key, self.huggingface_api_key = self.load_environment_variables()
         self.title = title
-        self.vectara_userid =  vectara_userid
+        self.vectara_userid =  vectara_user_id
         self.vectara_api_key =  vectara_api_key
-        self.vectara_corpusid =  corpusid
+        self.vectara_corpusid =  vectara_corpus_id
         self.together_api_key =  together_api_key
         self.huggingface_api_key = huggingface_api_key
         self.model_name = model_name
-        self.hf_token, self.systemprompt, self.userprompt = self.load_environment_variables()
+        self.system_prompt = system_prompt
+        self.hf_token = huggingface_api_key
+        self.hf_api = hf_api(endpoint="https://huggingface.co", token=self.hf_token , repo_type = "spaces")
 
         if not self.hf_token:
             raise ValueError("Hugging Face API key not found. Please ensure it is defined in .env")
@@ -50,16 +38,21 @@ class VectonicPublisher:
         hf_token = os.getenv("HUGGINGFACE_API_KEY")
         systemprompt = os.getenv("SYSTEMPROMPT")
         userprompt = os.getenv("USERPROMPT")
-        return hf_token , systemprompt , userprompt
+        vectara_userid = os.getenv("VECTARA_USER_ID"), 
+        vectara_api_key = os.getenv("VECTARA_API_KEY"), 
+        corpusid = os.getenv("VECTARA_CORPUS_ID"), 
+        huggingface_api_key = os.getenv("TOGETHER_API_KEY"), 
+        together_api_key = os.getenv("HUGGINGFACE_API_KEY"), 
+        return hf_token , systemprompt , userprompt , vectara_api_key, vectara_userid, corpusid, together_api_key, huggingface_api_key
 
     def publish(self):
-        deployment_path = self.deploy_router.get_deployment_path()
+        deployment_path = "./src/template/"
         title = (self.title[:30])  # Ensuring title does not exceed max bytes
-        new_space = self.api.create_repo(
+        new_space = self.hf_api.create_repo(
             repo_id=f"Vectonic-{title}",
             repo_type="space",
             exist_ok=True,
-            private=False,
+            private=True,
             space_sdk="gradio",
             token=self.hf_token,
         )
@@ -67,7 +60,7 @@ class VectonicPublisher:
             for file in files:
                 file_path = os.path.join(root, file)
                 path_in_repo = os.path.relpath(file_path, start=deployment_path)
-                self.api.upload_file(
+                self.hf_api.upload_file(
                     repo_id=new_space.repo_id,
                     path_or_fileobj=file_path,
                     path_in_repo=path_in_repo,
@@ -75,26 +68,27 @@ class VectonicPublisher:
                     repo_type="space",
                 )
         
-        self.api.add_space_secret(new_space.repo_id, "HF_TOKEN", self.huggingface_api_key, token=self.huggingface_api_key)
-        self.api.add_space_secret(new_space.repo_id, "VECTARA_API_KEY", self.vectara_api_key, token=self.vectara_api_key)
-        self.api.add_space_secret(new_space.repo_id, "SYSTEM_PROMPT", self.systemprompt, token=self.hf_token)
-        self.api.add_space_secret(new_space.repo_id, "VECTARA_USER_ID", self.vectara_userid, token=self.vectara_userid)
-        self.api.add_space_secret(new_space.repo_id, "TOGETHER_API_KEY", self.together_api_key, token=self.together_api_key)
-        self.api.add_space_secret(new_space.repo_id, "VECTARA_CORPUS_ID", self.userprompt, token=self.hf_token)
+        self.hf_api.add_space_secret(new_space.repo_id, "HF_TOKEN", self.huggingface_api_key, token=self.huggingface_api_key)
+        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_API_KEY", self.vectara_api_key, token=self.vectara_api_key)
+        self.hf_api.add_space_secret(new_space.repo_id, "SYSTEM_PROMPT", self.systemprompt, token=self.hf_token)
+        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_USER_ID", self.vectara_userid, token=self.vectara_userid)
+        self.hf_api.add_space_secret(new_space.repo_id, "TOGETHER_API_KEY", self.together_api_key, token=self.together_api_key)
+        self.hf_api.add_space_secret(new_space.repo_id, "VECTARA_CORPUS_ID", self.userprompt, token=self.hf_token)
 
         return f"Published to https://huggingface.co/spaces/{new_space.repo_id}"
 
 
 if __name__ == '__main__':
-    
-    deploy_routing = DeployRouting(
-        model_name="Meta-Llama"
-    )
-    data = VectonicPublisher(
-        "Vectara Sample Space",
-        deploy_routing=deploy_routing
-    )
-    data.publish(
+    publisher = VectonicPublisher()
+    print(publisher.publish())
+
+    # # deploy_routing = DeployRouting(
+    # #     model_name="Meta-Llama"
+    # # )
+    # data = VectonicPublisher(
+    #     "Vectara Sample Space",
+    #     # deploy_routing=deploy_routing
+    # )
+    # data.publish(
         
-    )
-    x = 0
+    # )
