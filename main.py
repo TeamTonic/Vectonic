@@ -1,8 +1,10 @@
 # main.py 
+from llama_index.core.schema import NodeWithScore
 from span_marker.modeling import SpanMarkerModel
+from llama_index.core import Response
 import json
 from pathlib import Path
-
+from tonic_validate import CallbackLLMResponse
 from llama_index.llms.together import TogetherLLM
 import os
 from src.dataloader import DataProcessor , DocumentLoader
@@ -32,6 +34,7 @@ from together import Together
 from together.resources.completions import Completions
 from together.types.abstract import TogetherClient
 from together.types.completions import CompletionResponse
+from tonic_validate import ValidateScorer, Benchmark
 from src.utils import get_all_files
 
 load_dotenv()
@@ -305,6 +308,8 @@ class Retriever:
                         
                 #     print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
         return temp_name_list
+    
+
 
 class EvaluationModule:
     def __init__(self, client:VectaraClient, corpus_ids:list, model_infos):
@@ -357,10 +362,83 @@ class EvaluationModule:
 
                     # Print response for clarity
                     print(f"Model {model_name} responded with: {response_text}")
+                    
+                    
+        vectara_client = VectaraClient(os.getenv("VECTARA_CUSTOMER_ID"),os.getenv("VECTARA_API_KEY"))
+        
+        answer_list = [vectara_client.query(i,num_results=1,corpus_id=1)[0].text for i in user_questions]
+        
+        # vectara_client.query(user_questions[2],num_results=1,corpus_id=1)
+        
+        benchmark = Benchmark(
+            questions = user_questions,
+            answers = answer_list, 
+            )
+        # .create_benchmark([q for q in user_questions], ["Correct answer"] * len(user_questions))
+        
 
-        benchmark = self.create_benchmark([q for q in user_questions], ["Correct answer"] * len(user_questions))
-        evaluation_results = self.evaluate_responses(benchmark, responses)
+        def get_llama_response(prompt) -> CallbackLLMResponse:
+            response = vectara_client.query(
+                prompt,
+                corpus_id=1,
+                num_results=1
+                
+                )[0]
+            
+            
+            response_as_reponse = Response(
+                response=response.text,
+                metadata=response.metadata,
+                # source_nodes=[NodeWithScore()]
+            )
+            
+            # Check response is of type Response
+            if not isinstance(response_as_reponse, Response):
+                raise ValueError(f"Expected Response, got {type(response)}")
+            
+            # Get the response and context from the Llama index
+            # context = [x.text for x in response.source_nodes]
+            context = response.summary
+            answer = response.text
+            if answer is None:
+                raise ValueError("No response from Llama")
+            
+            return {
+                "llm_answer": answer,
+                "llm_context_list": [context]
+            }
+                
+        # evaluation_results = self.evaluate_responses(benchmark, responses)
+        
+
+        scorer = ValidateScorer(
+            # model_evaluator="llama2:70b-chat", 
+            max_parsing_retries=10
+            )
+        response_scores = scorer.score(benchmark, get_llama_response)
+        
+        
+
         return evaluation_results
+    
+    
+
+def get_llama_response(prompt) -> CallbackLLMResponse:
+    response = query_engine.query(prompt)
+    # Check response is of type Response
+    if not isinstance(response, Response):
+        raise ValueError(f"Expected Response, got {type(response)}")
+    
+    # Get the response and context from the Llama index
+    context = [x.text for x in response.source_nodes]
+    answer = response.response
+    if answer is None:
+        raise ValueError("No response from Llama")
+    
+    return {
+        "llm_answer": answer,
+        "llm_context_list": context
+    }
 
 if __name__ == "__main__":
     customer_id = os.getenv("VECTARA_USER_ID")  # Replace with your customer ID
@@ -382,9 +460,13 @@ if __name__ == "__main__":
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     vectara_client = VectaraClient(customer_id, api_key)
     
+    
+    
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
     enriched_corpus_id = vectara_indexer.create_corpus("Enriched Markdown Corpus")
+    
+    
     
     if folder_corpus_id:
         print("Indexing entire folder...")
