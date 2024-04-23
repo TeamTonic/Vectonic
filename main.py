@@ -1,8 +1,10 @@
 # main.py 
-
+from llama_index.core.schema import NodeWithScore
+from span_marker.modeling import SpanMarkerModel
+from llama_index.core import Response
 import json
 from pathlib import Path
-
+from tonic_validate import CallbackLLMResponse
 from llama_index.llms.together import TogetherLLM
 import os
 from src.dataloader import DataProcessor , DocumentLoader
@@ -17,7 +19,7 @@ import unstructured
 import os
 from src.dataloader import DataProcessor, DocumentLoader
 from src.chunking import MarkdownProcessor
-from src.adv_publish import VectonicPublisher
+from src.publish import VectonicPublisher
 from unstructured.partition.md import partition_md as partition_md
 from typing import List, Dict, Optional
 from tonic_validate import Benchmark, ValidateScorer, LLMResponse
@@ -32,6 +34,9 @@ from together import Together
 from together.resources.completions import Completions
 from together.types.abstract import TogetherClient
 from together.types.completions import CompletionResponse
+from tonic_validate import ValidateScorer, Benchmark
+from src.utils import get_all_files
+
 load_dotenv()
 nest_asyncio.apply()
 
@@ -49,24 +54,29 @@ class DataLoading:
         """
         markdown_paths = []
         print(f"Processing files in folder: {self.folder_path}")
+        all_file_from_directory = get_all_files(self.folder_path)
+        
+        
+        
         for root, _, files in os.walk(self.folder_path):
             for file in files:
                 file_path = os.path.join(root, file)
-                try:
-                    reader = DataProcessor.choose_reader(file_path)
-                    if not reader:
-                        continue
+                # try:
+                reader = DataProcessor(file_path).choose_reader(file_path)
+                if not reader:
+                    continue
 
-                    documents = reader.load_data(file_path)
-                    for doc in documents:
-                        text = doc['text']  # Assuming each document has a 'text' key
-                        markdown_file_path = os.path.join(self.text_folder_path, f"{Path(file).stem}.md")
-                        with open(markdown_file_path, 'w') as md_file:
-                            md_file.write(text)
-                        markdown_paths.append(markdown_file_path)
-                        print(f"Markdown saved to {markdown_file_path}")
-                except Exception as e:
-                    print(f"Error processing {file}: {str(e)}")
+                documents = reader.load_data(file_path)
+                for doc in documents:
+                    # text = doc['text']  # Assuming each document has a 'text' key
+                    text = doc.text  # Assuming each document has a 'text' key
+                    markdown_file_path = os.path.join(self.text_folder_path, f"{Path(file).stem}.md")
+                    with open(markdown_file_path, 'w') as md_file:
+                        md_file.write(text)
+                    markdown_paths.append(markdown_file_path)
+                    print(f"Markdown saved to {markdown_file_path}")
+                # except Exception as e:
+                    # print(f"Error processing {file}: {str(e)}")
         return markdown_paths
 
 class Chonker:
@@ -102,12 +112,8 @@ class VectaraDataIndexer:
             })
         }
         response = self.vectara_client.create_corpus(corpus_data)
-        if response.get('status', {}).get('code') == 'OK':
-            return response['corpusId']
-        else:
-            print("Failed to create corpus", response)
-            return None
-
+        return response
+    
     def index_folder(self, corpus_id: int, folder_path: str):
         results = self.vectara_client.index_documents_from_folder(corpus_id, folder_path)
         return results
@@ -118,7 +124,7 @@ class VectaraDataIndexer:
                 title = f"{Path(filepath).stem}-section-{index}"
                 document_id = f"{Path(filepath).stem}-{index}"
                 response, status = self.vectara_client.index_document(
-                    corpus_id, document_id, title, {"section_number": index}, section
+                    corpus_id, document_id, title, {"section_number": index}, section.text
                 )
                 print(f"Indexed section '{title}' status: {status}")
 
@@ -131,15 +137,19 @@ class VectaraDataIndexer:
 
                 # Set text for NER processing
                 self.span_processor.text = section
-                output_str, entities = self.span_processor.analyze_text()
+                model = SpanMarkerModel.from_pretrained("tomaarsen/span-marker-bert-base-fewnerd-fine-super")
+                data =  model.predict(section.text)
+                # output_str, entities = self.span_processor.analyze_text()
+                
+                if data:
 
-                enriched_text = output_str + "\n" + section
-                metadata = json.dumps({ent['label']: ent['span'] for ent in entities})
+                    enriched_text = output_str + "\n" + section
+                    metadata = json.dumps({ent['label']: ent['span'] for ent in entities})
 
-                response, status = self.vectara_client.index_document(
-                    corpus_id, document_id, title, {}, enriched_text, metadata_json=metadata
-                )
-                print(f"Indexed enriched section '{title}' status: {status}")
+                    response, status = self.vectara_client.index_document(
+                        corpus_id, document_id, title, {}, enriched_text, metadata_json=metadata
+                    )
+                    print(f"Indexed enriched section '{title}' status: {status}")
 
 class Retriever:
     def __init__(self, client: VectaraClient):
@@ -165,23 +175,29 @@ class Retriever:
     
     def prompt_generator(
         self,
-        model="meta-llama/Meta-Llama-3-70B",
+        model="meta-llama/Llama-3-70b-chat-hf",
         token_limit=500,
         query="Please generate a system prompt"
         ) -> str:
         
+        llm = TogetherLLM(model=model, )
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
+        
+        # response_1 = client.chat.completions.create(
+        #     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+        #     messages=[{"role": "user", "content": query}],
+        # )
+        
         response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": query}],
         )
         
-        client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
-        reponse = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": query}],
-        )
-        return reponse.choices[0].message.content
+        # response = client.chat.completions.create(
+        #     model=model,
+        #     messages=[{"role": "user", "content": query}],
+        # )
+        return response.choices[0].message.content
         
 
     def query_together_llm(
@@ -229,6 +245,22 @@ class Retriever:
             "repetition_penalty": model_info['repetition_penalty'] if 'repetition_penalty' in model_info else 1,
         }
         
+        # together_client = TogetherClient(
+        #     api_key=TOGETHER_API_KEY
+        # ) 
+        # together_completion_reponse:CompletionResponse = Completions(
+        #     client=together_client
+        # ).create(
+            
+        # prompt=completion_context,
+        # model=model_info['model_string'],
+        # max_tokens=model_info['max_tokens'],
+        # temperature=model_info['temperature'],
+        # # top_p=model_info['top_p'],
+        # # top_k=model_info['top_k'],
+        # # repetition_penalty=model_info['repetition_penalty'],
+        # )
+        
         client = Together(api_key=os.environ.get("TOGETHER_API_KEY"))
         reponse = client.chat.completions.create(
             
@@ -236,8 +268,13 @@ class Retriever:
         max_tokens=model_info['max_tokens'],
         temperature=model_info['temperature'],
         messages=[{"role": "user", "content": completion_context}],
+        # top_p=model_info['top_p'],
+        # top_k=model_info['top_k'],
+        # repetition_penalty=model_info['repetition_penalty'],
         )
         return reponse
+        # response = requests.post('https://api.together.xyz/v1/completions', json=data, headers=headers)
+        # return response.json()
 
     def process_user_questions(
         client: VectaraClient, 
@@ -271,29 +308,23 @@ class Retriever:
                         
                 #     print(f"Response from {model_name}: {response.get('choices')[0]['text'] if 'choices' in response else 'No response'}")
         return temp_name_list
+    
+
 
 class EvaluationModule:
-    def __init__(self, client, corpus_id, model_infos,scorer = ValidateScorer([
+    def __init__(self, client:VectaraClient, corpus_ids:list, model_infos):
+        self.client = client
+        self.corpus_id = corpus_id
+        self.model_infos = model_infos
+        self.corpus_ids = corpus_ids
+        self.scorer = ValidateScorer([
             # ContainsText(),
             Latency(),
             AnswerConsistency(),
             AugmentationAccuracy(),
             RetrievalPrecision(),
             AnswerSimilarityScore()
-        ])):
-        self.client = client
-        self.corpus_id = corpus_id
-        self.model_infos = model_infos
-        self.corpus_ids = corpus_id
-        # self.scorer = ValidateScorer([
-        #     # ContainsText(),
-        #     Latency(),
-        #     AnswerConsistency(),
-        #     AugmentationAccuracy(),
-        #     RetrievalPrecision(),
-        #     AnswerSimilarityScore()
-        # ])
-        self.scorer = scorer
+        ])
 
     def process_queries(self, user_questions):
         retriever = Retriever(self.client)
@@ -331,10 +362,83 @@ class EvaluationModule:
 
                     # Print response for clarity
                     print(f"Model {model_name} responded with: {response_text}")
+                    
+                    
+        vectara_client = VectaraClient(os.getenv("VECTARA_CUSTOMER_ID"),os.getenv("VECTARA_API_KEY"))
+        
+        answer_list = [vectara_client.query(i,num_results=1,corpus_id=1)[0].text for i in user_questions]
+        
+        # vectara_client.query(user_questions[2],num_results=1,corpus_id=1)
+        
+        benchmark = Benchmark(
+            questions = user_questions,
+            answers = answer_list, 
+            )
+        # .create_benchmark([q for q in user_questions], ["Correct answer"] * len(user_questions))
+        
 
-        benchmark = self.create_benchmark([q for q in user_questions], ["Correct answer"] * len(user_questions))
-        evaluation_results = self.evaluate_responses(benchmark, responses)
+        def get_llama_response(prompt) -> CallbackLLMResponse:
+            response = vectara_client.query(
+                prompt,
+                corpus_id=1,
+                num_results=1
+                
+                )[0]
+            
+            
+            response_as_reponse = Response(
+                response=response.text,
+                metadata=response.metadata,
+                # source_nodes=[NodeWithScore()]
+            )
+            
+            # Check response is of type Response
+            if not isinstance(response_as_reponse, Response):
+                raise ValueError(f"Expected Response, got {type(response)}")
+            
+            # Get the response and context from the Llama index
+            # context = [x.text for x in response.source_nodes]
+            context = response.summary
+            answer = response.text
+            if answer is None:
+                raise ValueError("No response from Llama")
+            
+            return {
+                "llm_answer": answer,
+                "llm_context_list": [context]
+            }
+                
+        # evaluation_results = self.evaluate_responses(benchmark, responses)
+        
+
+        scorer = ValidateScorer(
+            # model_evaluator="llama2:70b-chat", 
+            max_parsing_retries=10
+            )
+        response_scores = scorer.score(benchmark, get_llama_response)
+        
+        
+
         return evaluation_results
+    
+    
+
+def get_llama_response(prompt) -> CallbackLLMResponse:
+    response = query_engine.query(prompt)
+    # Check response is of type Response
+    if not isinstance(response, Response):
+        raise ValueError(f"Expected Response, got {type(response)}")
+    
+    # Get the response and context from the Llama index
+    context = [x.text for x in response.source_nodes]
+    answer = response.response
+    if answer is None:
+        raise ValueError("No response from Llama")
+    
+    return {
+        "llm_answer": answer,
+        "llm_context_list": context
+    }
 
 if __name__ == "__main__":
     customer_id = os.getenv("VECTARA_USER_ID")  # Replace with your customer ID
@@ -344,25 +448,37 @@ if __name__ == "__main__":
     folder_to_process = './your_data_here'
     markdown_output_folder = './processed_markdown'
 
-    data_loading = DataLoading(folder_path=folder_to_process, text_folder_path=markdown_output_folder)
+    data_loading = DataLoading(
+        folder_path=folder_to_process, 
+        text_folder_path=markdown_output_folder
+        )
+    
+    
     markdown_paths = data_loading.process_files()
     chonker = Chonker(markdown_files=markdown_paths)
     md_chunks = chonker.process_markdown_files()
     vectara_indexer = VectaraDataIndexer(customer_id, api_key)
     vectara_client = VectaraClient(customer_id, api_key)
+    
+    
+    
     folder_corpus_id = vectara_indexer.create_corpus("Folder Corpus")
     markdown_corpus_id = vectara_indexer.create_corpus("Markdown Corpus")
     enriched_corpus_id = vectara_indexer.create_corpus("Enriched Markdown Corpus")
+    
+    
+    
     if folder_corpus_id:
         print("Indexing entire folder...")
         vectara_indexer.index_folder(folder_corpus_id, folder_to_process)
     if markdown_corpus_id:
         print("Indexing processed Markdown chunks...")
-        vectara_indexer.index_markdown_chunks(markdown_corpus_id, md_chunks)
+        vectara_indexer.index_markdown_chunks(markdown_corpus_id['data']['corpusId'], md_chunks)
     if enriched_corpus_id:
         print("Processing and indexing enriched Markdown chunks...")
-        vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id, md_chunks)
-    # Define model information based on Together API details
+        # vectara_indexer.index_markdown_chunks_with_entities(enriched_corpus_id['data']['corpusId'], md_chunks)
+    corpus_ids = [folder_corpus_id, markdown_corpus_id, enriched_corpus_id]
+
     model_infos = {
         "Qwen": {
             "model_string": "Qwen/Qwen1.5-72B",
@@ -381,27 +497,39 @@ if __name__ == "__main__":
         }
     }
     
-    # Sample questions - Place where user questions array is expected
+    evaluation_module = EvaluationModule(
+        vectara_client, 
+        model_infos=model_infos,
+        corpus_ids=[
+            folder_corpus_id,
+            markdown_corpus_id,
+            enriched_corpus_id,
+            ],
+        )
+    
+
+    
+    
+
+    # Instantiate the evaluation module
+    # evaluation_module = EvaluationModule(
+    #     vectara_client, 
+    #     model_infos=model_infos
+        
+    #     )
+
+    # Example user questions
     user_questions = [
         "What are the current trends in AI?",
         "How is climate change impacting ocean levels?",
         "Discuss the advancements in renewable energy technologies."
     ]
-    
-    # Process user questions
-    # Retriever.process_user_questions(vectara_indexer, user_questions, corpus_id, model_infos)
-    sample = Retriever.process_user_questions(vectara_client, user_questions, corpus_id, model_infos)
-    # Example use of EvaluationModule
-    evaluation_module = EvaluationModule(
-        vectara_client, 
-        corpus_id=corpus_id, 
-        model_infos=model_infos,
-        scorer=[AnswerConsistency()],
+    # Run the evaluation
+    evaluation_results = evaluation_module.process_queries(
+        user_questions=user_questions
         )
-    
-    
-    evaluation_module.process_queries(user_questions)
-    # Continue
+
+    print(evaluation_results)
     publisher = VectonicPublisher()
     try:
         result = publisher.adv_publish()
