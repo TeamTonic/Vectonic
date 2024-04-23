@@ -419,7 +419,7 @@ class EvaluationModule:
         
         
 
-        return evaluation_results
+        return response_scores
     
     
 
